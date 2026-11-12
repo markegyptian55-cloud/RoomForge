@@ -23,7 +23,7 @@ import subprocess
 import sys
 
 if os.path.exists("/kaggle/working"):
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "av", "pycolmap-cuda12", "bitsandbytes", "spz"], check=False)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "av", "pycolmap-cuda12"], check=False)
 
 import torch
 
@@ -111,11 +111,13 @@ def benchmark_pose_backends(sample_video: str | None = None) -> dict:
                 if index >= 8:
                     break
                 frame.to_image().save(frame_dir / f"frame_{index:04d}.png")
-        database = frame_dir / "database.db"
+        database = sample.parent / "preflight_database.db"
+        sparse_out = sample.parent / "preflight_sparse"
+        sparse_out.mkdir(exist_ok=True)
         pycolmap.extract_features(str(database), str(frame_dir))
         pycolmap.match_sequential(str(database))
-        reconstruction = pycolmap.global_mapping(str(database), str(frame_dir))
-        registered = len(reconstruction[0].images) if reconstruction else 0
+        reconstruction = pycolmap.global_mapping(str(database), str(frame_dir), str(sparse_out))
+        registered = len(next(iter(reconstruction.values())).images) if reconstruction else 0
         results["pycolmap"] = {"registered_frames": registered, "runtime_s": round(time.perf_counter() - started, 4), "peak_vram_mb": 0}
     except (ImportError, OSError, RuntimeError, TypeError, ValueError) as exc:
         results["pycolmap"] = {"status": "unavailable", "error": str(exc)}
@@ -154,11 +156,11 @@ try:
         result["gsplat"]["depth_smoke"] = bool(torch.isfinite(rendered).all())
 except ImportError as exc:
     result["gsplat"] = {"available": False, "error": str(exc)}
-for package in ("spz", "ppisp"):
+for package in ("spz", "ppisp", "transformers"):
     try:
         __import__(package)
         result[package] = {"available": True}
-    except ImportError as exc:
+    except (ImportError, RuntimeError, Exception) as exc:
         result[package] = {"available": False, "error": str(exc)}
 print(json.dumps(result, indent=2))
 summary.setdefault("checks", {})["gaussian_splat"] = result
@@ -174,8 +176,8 @@ try:
     import inspect
     from diffusers import Flux2KleinInpaintPipeline
     sig_params = sorted(inspect.signature(Flux2KleinInpaintPipeline.__call__).parameters)
-    result["flux2_klein"] = {"available": True, "dtype": "float16", "quantization": "4bit_optional_cpu_offload", "call_params": sig_params}
-except ImportError as exc:
+    result["flux2_klein"] = {"available": True, "dtype": "float16", "quantization": "cpu_offload", "call_params": sig_params}
+except (ImportError, RuntimeError) as exc:
     result["flux2_klein"] = {"available": False, "error": str(exc)}
 try:
     from diffusers import StableDiffusionXLInpaintPipeline
