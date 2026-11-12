@@ -19,6 +19,7 @@ class ExportRequest:
     output_dir: Path
     project_id: str = "project"
     version_id: str = "version"
+    parent_version_id: str | None = None
     width: int = 640
     height: int = 480
     intrinsics: dict[str, float] | None = None
@@ -69,7 +70,8 @@ def _write_spz(path: Path, points: np.ndarray, colors: np.ndarray, opacity: np.n
         cloud = spz.GaussianCloud(positions=points, colors=colors, opacities=opacity)
         spz.save_spz(str(path), cloud)
         return
-    except (ImportError, AttributeError, TypeError, ValueError, OSError):
+    except (ImportError, AttributeError, TypeError, ValueError, OSError) as exc:
+        warnings.warn(f"Native spz writer unavailable ({exc}); writing gzipped fallback .spz", RuntimeWarning, stacklevel=2)
         _write_fallback_spz(path, points, colors, opacity)
 
 
@@ -95,7 +97,8 @@ def export_scene(request: ExportRequest, points_xyz: np.ndarray, opacity: np.nda
     (out / "sparse_points.json").write_text(json.dumps(sparse, separators=(",", ":")) + "\n", encoding="utf-8")
     intrinsic = request.intrinsics or {"fx": 500.0, "fy": 500.0, "cx": request.width / 2, "cy": request.height / 2}
     manifest = SceneManifest.model_validate({"schema_version": "1.0.0", "project_id": request.project_id,
-        "version_id": request.version_id, "coord_convention": "opencv_colmap",
+        "version_id": request.version_id, "parent_version_id": request.parent_version_id,
+        "coord_convention": "opencv_colmap",
         "T_viewer_from_colmap": request.T_viewer_from_colmap or np.eye(4).tolist(), "camera_model": "PINHOLE",
         "width": request.width, "height": request.height, "intrinsics": intrinsic, "test_every": request.test_every,
         "pose_backend": request.pose_backend, "frames": request.frames or _default_frames(),
