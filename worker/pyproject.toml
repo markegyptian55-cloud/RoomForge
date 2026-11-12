@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "room3d-worker"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.7", "numpy", "scipy", "av", "opencv-python-headless", "pillow", "httpx"]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy"]
+gpu = ["torch", "gsplat", "spz", "pycolmap-cuda12", "diffusers", "transformers", "accelerate", "bitsandbytes"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["room3d_worker"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
