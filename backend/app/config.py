@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +20,8 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="dev-jwt-secret-change-me", min_length=16)
     auth_required: bool = False
     max_upload_bytes: int = 500 * 1024 * 1024
+    queue_backend: Literal["db_pull", "celery_redis"] = "db_pull"
+    redis_url: str | None = None
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")

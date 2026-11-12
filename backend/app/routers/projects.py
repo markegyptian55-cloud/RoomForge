@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..db import get_db
-from ..models import Project, SceneVersion, Task
+from ..models import EditSession, Project, SceneVersion, Task
 from ..security import get_current_user
+from ..services.celery_bridge import dispatch_task_if_configured
 from ..storage import get_storage
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -70,10 +71,12 @@ def get_project(project_id: str, session: Session = Depends(get_db), user_id: st
     project = _project(session, project_id, user_id)
     versions = session.scalars(select(SceneVersion).where(SceneVersion.project_id == project.id)).all()
     tasks = session.scalars(select(Task).where(Task.project_id == project.id).order_by(Task.created_at.desc())).all()
+    edits = session.scalars(select(EditSession).where(EditSession.project_id == project.id).order_by(EditSession.created_at.desc())).all()
     return {**_view(project), "versions": [{"id": v.id, "label": v.label} for v in versions],
             "tasks": [{"id": t.id, "type": t.task_type, "status": t.status, "stage": t.current_stage,
                        "progress_pct": t.progress_pct, "message": t.message} for t in tasks],
-            "edit_sessions": []}
+            "edit_sessions": [{"id": e.id, "status": e.status, "base_version_id": e.base_version_id,
+                               "target_version_id": e.target_version_id} for e in edits]}
 
 
 @router.post("/{project_id}/upload")
@@ -102,4 +105,5 @@ def upload_project(project_id: str, file: UploadFile, session: Session = Depends
     task = Task(project_id=project.id, task_type="reconstruct_week1", payload_json=json.dumps({"input_key": key}))
     session.add(task)
     session.commit()
+    dispatch_task_if_configured(task.id, task.task_type, get_settings(), {"input_key": key})
     return {"project_id": project.id, "video_key": key, "bytes": written, "task_id": task.id}

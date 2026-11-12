@@ -9,9 +9,10 @@ from sqlalchemy.exc import IntegrityError
 
 from .config import get_settings
 from .db import Base, engine
-from .routers import auth, projects, scenes, tasks
+from .routers import auth, edits, projects, scenes, tasks
 from .services.queue import ConflictError
 
+LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 settings = get_settings()
 Base.metadata.create_all(engine)
@@ -44,7 +45,8 @@ async def integrity_handler(_: Request, __: IntegrityError) -> JSONResponse:
 
 
 @app.exception_handler(Exception)
-async def error_handler(_: Request, __: Exception) -> JSONResponse:
+async def error_handler(_: Request, exc: Exception) -> JSONResponse:
+    LOGGER.exception("Unhandled server error: %s", exc)
     return JSONResponse(status_code=500, content={"error": "internal_error", "detail": "internal server error"})
 
 
@@ -52,3 +54,4 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(scenes.router)
 app.include_router(tasks.router)
+app.include_router(edits.router)

@@ -9,8 +9,10 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from ..models import Project, SceneVersion, Task, TaskAttempt
+from ..models import EditSession, Project, SceneVersion, Task, TaskAttempt
 from .progress import compute_progress
+
+MAX_TASK_RETRIES = 3
 
 
 class ConflictError(RuntimeError):
@@ -27,36 +29,84 @@ def _supports(task: Task, capabilities: set[str]) -> bool:
     return required.issubset(capabilities)
 
 
+def _mark_edit_failed(session: Session, task: Task) -> None:
+    if not task.edit_session_id:
+        return
+    edit = session.get(EditSession, task.edit_session_id)
+    if edit is not None:
+        edit.status = "failed"
+
+
+def _dependency_ready(session: Session, task: Task, payload: dict[str, Any]) -> bool:
+    dep_id = payload.get("depends_on_task_id")
+    if not isinstance(dep_id, str):
+        return True
+    dep_task = session.get(Task, dep_id)
+    if dep_task is None or dep_task.status in {"failed", "cancelled"}:
+        reason = dep_task.status if dep_task is not None else "missing"
+        task.status = "failed"
+        task.message = f"Prerequisite task '{dep_id}' is {reason}"
+        _mark_edit_failed(session, task)
+        session.commit()
+        return False
+    return dep_task.status == "completed"
+
+
+def _try_claim_sqlite(session: Session, task_id: str, worker_id: str, capabilities: list[str], interactive_only: bool) -> dict[str, Any] | None:
+    task = session.get(Task, task_id)
+    if task is None or task.status != "queued":
+        return None
+    payload = json.loads(task.payload_json or "{}")
+    if (interactive_only and not payload.get("interactive", False)) or not _supports(task, set(capabilities)):
+        return None
+    if not _dependency_ready(session, task, payload):
+        return None
+    attempt_id = str(uuid.uuid4())
+    changed = session.execute(
+        update(Task).where(Task.id == task.id, Task.status == "queued").values(
+            status="claimed", active_attempt_id=attempt_id, updated_at=_now()
+        )
+    ).rowcount
+    if changed != 1:
+        session.rollback()
+        return None
+    session.add(TaskAttempt(id=attempt_id, task_id=task.id, worker_id=worker_id, status="claimed"))
+    session.commit()
+    return {"task_id": task.id, "attempt_id": attempt_id, "project_id": task.project_id,
+            "task_type": task.task_type, "payload": payload}
+
+
+def _try_claim_postgres(session: Session, task_id: str, worker_id: str, capabilities: list[str], interactive_only: bool) -> dict[str, Any] | None:
+    stmt = select(Task).where(Task.id == task_id, Task.status == "queued").with_for_update(skip_locked=True)
+    task = session.scalars(stmt).first()
+    if task is None:
+        return None
+    payload = json.loads(task.payload_json or "{}")
+    if (interactive_only and not payload.get("interactive", False)) or not _supports(task, set(capabilities)):
+        return None
+    if not _dependency_ready(session, task, payload):
+        return None
+    attempt_id = str(uuid.uuid4())
+    task.status = "claimed"
+    task.active_attempt_id = attempt_id
+    session.add(TaskAttempt(id=attempt_id, task_id=task.id, worker_id=worker_id, status="claimed"))
+    session.commit()
+    return {"task_id": task.id, "attempt_id": attempt_id, "project_id": task.project_id,
+            "task_type": task.task_type, "payload": payload}
+
+
 def claim_next_task(session: Session, worker_id: str, capabilities: list[str], interactive_only: bool) -> dict[str, Any] | None:
-    candidates = select(Task).where(Task.status == "queued").order_by(Task.created_at, Task.id)
-    if session.bind and session.bind.dialect.name == "postgresql":
-        candidates = candidates.with_for_update(skip_locked=True)
+    candidate_ids = list(
+        session.scalars(select(Task.id).where(Task.status == "queued").order_by(Task.created_at, Task.id).limit(50)).all()
+    )
+    is_pg = bool(session.bind and session.bind.dialect.name == "postgresql")
     try:
-        for task in session.scalars(candidates).all():
-            payload = json.loads(task.payload_json or "{}")
-            if interactive_only and not payload.get("interactive", False):
-                continue
-            if not _supports(task, set(capabilities)):
-                continue
-            attempt_id = str(uuid.uuid4())
-            if session.bind and session.bind.dialect.name == "sqlite":
-                changed = session.execute(
-                    update(Task).where(Task.id == task.id, Task.status == "queued").values(
-                        status="claimed", active_attempt_id=attempt_id, updated_at=_now()
-                    )
-                ).rowcount
-                if changed != 1:
-                    session.rollback()
-                    continue
-                session.refresh(task)
-            else:
-                task.status = "claimed"
-                task.active_attempt_id = attempt_id
-            attempt = TaskAttempt(id=attempt_id, task_id=task.id, worker_id=worker_id, status="claimed")
-            session.add(attempt)
-            session.commit()
-            return {"task_id": task.id, "attempt_id": attempt_id, "project_id": task.project_id,
-                    "task_type": task.task_type, "payload": payload}
+        for task_id in candidate_ids:
+            claimed = (_try_claim_postgres if is_pg else _try_claim_sqlite)(
+                session, task_id, worker_id, capabilities, interactive_only
+            )
+            if claimed is not None:
+                return claimed
     except OperationalError:
         session.rollback()
         raise
@@ -71,14 +121,16 @@ def _locked_task(session: Session, task_id: str) -> Task:
     return task
 
 
-def _check_attempt(task: Task, attempt_id: str) -> None:
+def _check_active_attempt(task: Task, attempt_id: str) -> None:
+    if task.status not in {"claimed", "running"}:
+        raise ConflictError("task is no longer active")
     if task.active_attempt_id != attempt_id:
         raise ConflictError("stale task attempt")
 
 
 def heartbeat_task(session: Session, task_id: str, attempt_id: str, worker_id: str) -> None:
     task = _locked_task(session, task_id)
-    _check_attempt(task, attempt_id)
+    _check_active_attempt(task, attempt_id)
     attempt = session.get(TaskAttempt, attempt_id)
     if not attempt or attempt.worker_id != worker_id:
         raise ConflictError("invalid task attempt")
@@ -91,7 +143,7 @@ def heartbeat_task(session: Session, task_id: str, attempt_id: str, worker_id: s
 def update_progress(session: Session, task_id: str, attempt_id: str, stage: str, progress_pct: float,
                     message: str | None = None, telemetry: dict[str, Any] | None = None) -> float:
     task = _locked_task(session, task_id)
-    _check_attempt(task, attempt_id)
+    _check_active_attempt(task, attempt_id)
     progress = compute_progress(task.task_type, stage, progress_pct)
     task.current_stage, task.progress_pct, task.message, task.status = stage, progress, message, "running"
     if telemetry:
@@ -134,16 +186,22 @@ def _register_completed_version(
     if project is not None:
         project.active_version_id = version_id
         project.status = "completed"
+    if task.edit_session_id:
+        edit = session.get(EditSession, task.edit_session_id)
+        if edit is not None:
+            edit.target_version_id = version_id
+            edit.status = "completed"
 
 
 def complete_task(session: Session, task_id: str, attempt_id: str, result_payload: dict[str, Any],
                   result_manifest_key: str | None = None) -> None:
     task = _locked_task(session, task_id)
-    _check_attempt(task, attempt_id)
+    _check_active_attempt(task, attempt_id)
     result = dict(result_payload)
     if result_manifest_key:
         result["manifest_key"] = result_manifest_key
     task.status, task.progress_pct, task.result_json = "completed", 100.0, json.dumps(result)
+    task.active_attempt_id = None
     attempt = session.get(TaskAttempt, attempt_id)
     if attempt:
         attempt.status, attempt.finished_at = "completed", _now()
@@ -154,9 +212,13 @@ def complete_task(session: Session, task_id: str, attempt_id: str, result_payloa
 def fail_task(session: Session, task_id: str, attempt_id: str, error_code: str, error_message: str,
               retryable: bool) -> None:
     task = _locked_task(session, task_id)
-    _check_attempt(task, attempt_id)
-    task.status = "queued" if retryable else "failed"
-    task.retry_count += 1 if retryable else 0
+    _check_active_attempt(task, attempt_id)
+    should_retry = retryable and task.retry_count < MAX_TASK_RETRIES
+    task.status = "queued" if should_retry else "failed"
+    if should_retry:
+        task.retry_count += 1
+    else:
+        _mark_edit_failed(session, task)
     attempt = session.get(TaskAttempt, attempt_id)
     if attempt:
         attempt.status, attempt.finished_at = "failed", _now()
