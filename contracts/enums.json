@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0.0",
+  "task_types": [
+    "reconstruct_week1",
+    "pose_benchmark",
+    "segment_init",
+    "segment_refine",
+    "track_propagate",
+    "diffusion_preview",
+    "diffusion_apply",
+    "rebuild_week2"
+  ],
+  "task_statuses": [
+    "queued",
+    "claimed",
+    "running",
+    "completed",
+    "failed",
+    "cancelled"
+  ],
+  "stages": {
+    "reconstruct_week1": [
+      { "id": "01_extract", "label": "Extract Keyframes & Strip PII", "weight": 15 },
+      { "id": "02_poses", "label": "Camera Poses & Sparse Alignment", "weight": 30 },
+      { "id": "03_train", "label": "Train 3D Gaussian Splatting", "weight": 40 },
+      { "id": "04_export", "label": "Export Viewer Bundles (.spz / Fallback)", "weight": 15 }
+    ],
+    "rebuild_week2": [
+      { "id": "05_track", "label": "Cross-Frame Object Masking & Tracking", "weight": 25 },
+      { "id": "06_diffusion", "label": "Reference-Conditioned Object Editing", "weight": 35 },
+      { "id": "07_rebuild", "label": "Pose-Preserved 3DGS Rebuild & Export", "weight": 40 }
+    ]
+  },
+  "pose_backends": [
+    "colmap_global",
+    "colmap_incremental",
+    "vggt_chunked",
+    "map_anything"
+  ],
+  "rebuild_modes": [
+    "masked_finetune",
+    "from_scratch"
+  ],
+  "mask_contract": {
+    "format": "PNG",
+    "channels": 1,
+    "dtype": "uint8",
+    "background_value": 0,
+    "foreground_value": 255,
+    "require_mod16": true
+  },
+  "gpu_partition": {
+    "diffusion_device": "cuda:0",
+    "sam_and_3dgs_device": "cuda:1"
+  }
+}

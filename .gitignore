@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+
+# Node / Frontend
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/playwright-report/
+frontend/test-results/
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local Storage, Data & Heavy Artifacts
+data/
+storage_local/
+artifacts/
+runs/
+*.ply
+*.splat
+*.ksplat
+*.spz
+*.sog
+*.glb
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.mp4
+*.mov
+*.db
+*.sqlite
+*.sqlite3
+
+# Scratch / IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+scratch/

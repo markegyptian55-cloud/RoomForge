@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Room3D Scene & Edit Manifest v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "version_id",
+    "coord_convention",
+    "T_viewer_from_colmap",
+    "camera_model",
+    "width",
+    "height",
+    "intrinsics",
+    "test_every",
+    "frames",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "project_id": { "type": "string", "minLength": 1 },
+    "version_id": { "type": "string", "minLength": 1 },
+    "parent_version_id": { "type": ["string", "null"] },
+    "coord_convention": { "const": "opencv_colmap" },
+    "T_viewer_from_colmap": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "array",
+        "minItems": 4,
+        "maxItems": 4,
+        "items": { "type": "number" }
+      }
+    },
+    "camera_model": { "const": "PINHOLE" },
+    "width": { "type": "integer", "multipleOf": 16, "minimum": 64 },
+    "height": { "type": "integer", "multipleOf": 16, "minimum": 64 },
+    "intrinsics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fx", "fy", "cx", "cy"],
+      "properties": {
+        "fx": { "type": "number", "exclusiveMinimum": 0 },
+        "fy": { "type": "number", "exclusiveMinimum": 0 },
+        "cx": { "type": "number", "minimum": 0 },
+        "cy": { "type": "number", "minimum": 0 }
+      }
+    },
+    "test_every": { "type": "integer", "minimum": 0 },
+    "pose_backend": {
+      "type": "string",
+      "enum": ["colmap_global", "colmap_incremental", "vggt_chunked", "map_anything"]
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "frame_idx",
+          "orig_video_frame",
+          "timestamp_sec",
+          "image_relpath",
+          "colmap_image_id",
+          "cam_from_world"
+        ],
+        "properties": {
+          "frame_idx": { "type": "integer", "minimum": 0 },
+          "orig_video_frame": { "type": "integer", "minimum": 0 },
+          "timestamp_sec": { "type": "number", "minimum": 0 },
+          "image_relpath": { "type": "string", "minLength": 1 },
+          "colmap_image_id": { "type": "integer", "minimum": 1 },
+          "cam_from_world": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": { "type": "number" }
+            }
+          },
+          "excluded": { "type": "boolean", "default": false }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sparse_dir", "spz_relpath", "sparse_points_relpath"],
+      "properties": {
+        "sparse_dir": { "type": "string", "const": "sparse/0" },
+        "ply_relpath": { "type": ["string", "null"] },
+        "spz_relpath": { "type": "string", "minLength": 1 },
+        "sog_relpath": { "type": ["string", "null"] },
+        "sparse_points_relpath": { "type": "string", "minLength": 1 },
+        "ckpt_relpath": { "type": ["string", "null"] },
+        "depth_dir": { "type": ["string", "null"] },
+        "collision_glb_relpath": { "type": ["string", "null"] }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}
