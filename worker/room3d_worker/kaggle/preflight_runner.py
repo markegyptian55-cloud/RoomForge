@@ -20,6 +20,11 @@ import os
 import platform
 import shutil
 import subprocess
+import sys
+
+if os.path.exists("/kaggle/working"):
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "av", "pycolmap-cuda12", "bitsandbytes", "spz"], check=False)
+
 import torch
 
 summary = {"hardware": {"os": platform.platform()}, "checks": {}}
@@ -166,8 +171,10 @@ import torch
 
 result = {"device": "cuda:0" if torch.cuda.is_available() else "cpu", "bf16_required": False}
 try:
+    import inspect
     from diffusers import Flux2KleinInpaintPipeline
-    result["flux2_klein"] = {"available": True, "dtype": "float16", "quantization": "4bit_optional_cpu_offload", "vram_probe": "not_loaded"}
+    sig_params = sorted(inspect.signature(Flux2KleinInpaintPipeline.__call__).parameters)
+    result["flux2_klein"] = {"available": True, "dtype": "float16", "quantization": "4bit_optional_cpu_offload", "call_params": sig_params}
 except ImportError as exc:
     result["flux2_klein"] = {"available": False, "error": str(exc)}
 try:
