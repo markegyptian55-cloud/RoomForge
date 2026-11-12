@@ -19,4 +19,19 @@
 - **Verified `pycolmap 4.2.1` signature:** `ALIKED_N16ROT` + `ALIKED_LIGHTGLUE` (`onnx_support: true`, `global_mapping: true`). Requires 3 positional args `pycolmap.global_mapping(database_path, image_path, output_path)` with `database.db` stored **outside** `image_path`.
 - **Verified packaging trap:** PyPI `spz` has a circular import error (`BoundingBox`) on Python 3.13; use `scaniverse/spz` or pure-Python protobuf gzip writer + `@playcanvas/splat-transform` post-processing.
 
-_Baseline verified. S06 parameter ablations, VRAM profiling, and artifact comparison will be appended in S2.3 / S3.1._
+## 3. Implemented T4-Safe Diffusion & Compositor Safeguards (`s06_diffusion.py`, S2.3)
+
+| Safeguard | Implementation (`worker/room3d_worker/pipeline/s06_diffusion.py`) | Rationale / Verified Constraint |
+| :--- | :--- | :--- |
+| **Commercial License Gate** | `_assert_allowed_model_id` (`FORBIDDEN_MODEL_PATTERNS = ("9b", "qwen")`) | Permits `flux2_klein_4b` (`Apache-2.0`) and `sdxl_inpaint_t4` (`OpenRAIL++`); blocks `FLUX.2 [klein] 9B` and `Qwen-Image-2.1`. |
+| **VRAM & Grid Pixel Guard** | `MAX_GRID_PIXELS = 1048576` (`1024 * 1024`), `enable_vae_tiling`, `enable_vae_slicing`, `resolve_t4_dtype` | Multi-frame 2x2 grid (`<= 4` views via `_tile_2x2` / `_propagate_grid_batch`) automatically falls back to sequential per-frame generation (`_propagate_sequential`) conditioned on `image_reference` whenever total grid pixels exceed `1024^2` or batch size `< 4`. Defaults: `num_inference_steps=8`, `guidance_scale=3.5`, `strength=0.85`, `feather_px=3`. |
+| **Bit-Exact Background Preservation** | `composite_strict_mask` + `assert_unmasked_unchanged` | Enforces `max_abs_diff == 0` outside the binary mask (`worker/tests/test_diffusion.py`). |
+| **Mod-16 & T4 Dtype Guard** | `pad_to_multiple(..., 16)` + `resolve_t4_dtype` | Pads non-mod-16 dimensions safely before inpainting and selects `torch.float16` on `sm_75` GPUs (CPU uses `float32`). |
+
+---
+
+## 4. Week 2 Localized 3DGS Rebuild (`s07_rebuild.py`, S2.4)
+
+- **`masked_finetune` (`fine_tune_steps=5000`)**: Computes `compute_roi_gaussian_mask` over tracked masks (`roi_pad_px=8`), optimizes ONLY `roi_mask` parameters while keeping background Gaussians frozen in differentiable `gsplat.rasterization` (`_run_opt_loop`), and enforces `assert_frozen_gaussians_unchanged` post-rebuild / pre-export so any background mutation fails loudly (`worker/tests/test_rebuild.py`).
+- **`from_scratch` (`from_scratch_steps=15000`)**: Full unmasked ablation mode comparing global re-optimization against localized Week 2 editing.
+- **Test Status**: `worker/tests/test_diffusion.py` (`5/5`) and `worker/tests/test_rebuild.py` (`4/4`) pass on CPU with synthetic tensors.

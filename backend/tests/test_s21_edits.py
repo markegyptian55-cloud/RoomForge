@@ -180,3 +180,35 @@ def test_apply_barrier_completion_failure_cascade_and_idempotency(isolated_clien
     assert rebuild_task["status"] == "failed"
     edits = isolated_client.get("/api/projects/proj-s21/edits", headers=owner_h).json()
     assert edits[0]["status"] == "failed"
+
+
+def test_malformed_payload_is_isolated_and_does_not_poison_queue(isolated_client: TestClient) -> None:
+    import app.db as db_mod
+    from app.models import Project, Task
+
+    with db_mod.SessionLocal() as session:
+        session.add(Project(id="proj-bad", name="Malformed Payload Test", status="queued"))
+        session.add(Task(id="t-bad-json", project_id="proj-bad", task_type="segment_init", payload_json="{not-json"))
+        session.add(
+            Task(
+                id="t-good",
+                project_id="proj-bad",
+                task_type="segment_init",
+                payload_json=json.dumps({"required_capabilities": None}),
+            )
+        )
+        session.commit()
+
+    worker_h = {"X-Worker-Token": "test-worker-secret"}
+    res = isolated_client.post(
+        "/api/tasks/claim",
+        json={"worker_id": "sam-1", "capabilities": ["segment_init"], "interactive_only": True},
+        headers=worker_h,
+    )
+    assert res.status_code == 200
+    assert res.json()["task_id"] == "t-good"
+
+    with db_mod.SessionLocal() as session:
+        bad = session.get(Task, "t-bad-json")
+        assert bad is not None and bad.status == "failed"
+

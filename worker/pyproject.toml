@@ -10,7 +10,7 @@ dependencies = ["pydantic>=2.7", "numpy", "scipy", "av", "opencv-python-headless
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff", "mypy"]
-gpu = ["torch", "gsplat", "spz", "pycolmap-cuda12", "diffusers", "transformers", "accelerate", "bitsandbytes"]
+gpu = ["torch", "gsplat", "spz", "pycolmap-cuda12", "diffusers", "transformers", "accelerate"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["room3d_worker"]

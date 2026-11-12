@@ -23,10 +23,31 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _supports(task: Task, capabilities: set[str]) -> bool:
-    payload = json.loads(task.payload_json or "{}")
-    required = set(payload.get("required_capabilities", []))
-    return required.issubset(capabilities)
+def _parse_payload(session: Session, task: Task) -> dict[str, Any] | None:
+    try:
+        parsed = json.loads(task.payload_json or "{}")
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, dict):
+        return parsed
+    task.status = "failed"
+    task.message = "Malformed task payload_json"
+    _mark_edit_failed(session, task)
+    session.commit()
+    return None
+
+
+def _supports(task: Task, payload: dict[str, Any], capabilities: set[str]) -> bool:
+    req_raw = payload.get("required_capabilities")
+    if req_raw is None:
+        required: set[str] = set()
+    elif isinstance(req_raw, list):
+        required = {str(item) for item in req_raw}
+    else:
+        return False
+    if not required.issubset(capabilities):
+        return False
+    return not capabilities or not task.task_type or task.task_type in capabilities
 
 
 def _mark_edit_failed(session: Session, task: Task) -> None:
@@ -52,15 +73,36 @@ def _dependency_ready(session: Session, task: Task, payload: dict[str, Any]) -> 
     return dep_task.status == "completed"
 
 
-def _try_claim_sqlite(session: Session, task_id: str, worker_id: str, capabilities: list[str], interactive_only: bool) -> dict[str, Any] | None:
+_INTERACTIVE_TASKS = frozenset({"segment_init", "segment_refine"})
+
+
+def _is_interactive(task: Task, payload: dict[str, Any]) -> bool:
+    return task.task_type in _INTERACTIVE_TASKS or bool(payload.get("interactive", False))
+
+
+def _preflight_claim(
+    session: Session, task_id: str, capabilities: list[str], interactive_only: bool
+) -> tuple[Task, dict[str, Any]] | None:
     task = session.get(Task, task_id)
     if task is None or task.status != "queued":
         return None
-    payload = json.loads(task.payload_json or "{}")
-    if (interactive_only and not payload.get("interactive", False)) or not _supports(task, set(capabilities)):
+    payload = _parse_payload(session, task)
+    if payload is None:
+        return None
+    if (interactive_only and not _is_interactive(task, payload)) or not _supports(task, payload, set(capabilities)):
         return None
     if not _dependency_ready(session, task, payload):
         return None
+    return task, payload
+
+
+def _try_claim_sqlite(
+    session: Session, task_id: str, worker_id: str, capabilities: list[str], interactive_only: bool
+) -> dict[str, Any] | None:
+    ready = _preflight_claim(session, task_id, capabilities, interactive_only)
+    if ready is None:
+        return None
+    task, payload = ready
     attempt_id = str(uuid.uuid4())
     changed = session.execute(
         update(Task).where(Task.id == task.id, Task.status == "queued").values(
@@ -76,19 +118,26 @@ def _try_claim_sqlite(session: Session, task_id: str, worker_id: str, capabiliti
             "task_type": task.task_type, "payload": payload}
 
 
-def _try_claim_postgres(session: Session, task_id: str, worker_id: str, capabilities: list[str], interactive_only: bool) -> dict[str, Any] | None:
-    stmt = select(Task).where(Task.id == task_id, Task.status == "queued").with_for_update(skip_locked=True)
+def _try_claim_postgres(
+    session: Session, task_id: str, worker_id: str, capabilities: list[str], interactive_only: bool
+) -> dict[str, Any] | None:
+    ready = _preflight_claim(session, task_id, capabilities, interactive_only)
+    if ready is None:
+        return None
+    _, payload = ready
+    stmt = (
+        select(Task)
+        .where(Task.id == task_id, Task.status == "queued")
+        .with_for_update(skip_locked=True)
+        .execution_options(populate_existing=True)
+    )
     task = session.scalars(stmt).first()
     if task is None:
-        return None
-    payload = json.loads(task.payload_json or "{}")
-    if (interactive_only and not payload.get("interactive", False)) or not _supports(task, set(capabilities)):
-        return None
-    if not _dependency_ready(session, task, payload):
         return None
     attempt_id = str(uuid.uuid4())
     task.status = "claimed"
     task.active_attempt_id = attempt_id
+    task.updated_at = _now()
     session.add(TaskAttempt(id=attempt_id, task_id=task.id, worker_id=worker_id, status="claimed"))
     session.commit()
     return {"task_id": task.id, "attempt_id": attempt_id, "project_id": task.project_id,
@@ -96,9 +145,12 @@ def _try_claim_postgres(session: Session, task_id: str, worker_id: str, capabili
 
 
 def claim_next_task(session: Session, worker_id: str, capabilities: list[str], interactive_only: bool) -> dict[str, Any] | None:
-    candidate_ids = list(
-        session.scalars(select(Task.id).where(Task.status == "queued").order_by(Task.created_at, Task.id).limit(50)).all()
-    )
+    stmt = select(Task.id).where(Task.status == "queued")
+    if capabilities:
+        stmt = stmt.where(Task.task_type.in_(capabilities))
+    if interactive_only:
+        stmt = stmt.where(Task.task_type.in_(_INTERACTIVE_TASKS) | Task.payload_json.contains("interactive"))
+    candidate_ids = list(session.scalars(stmt.order_by(Task.created_at, Task.id).limit(50)).all())
     is_pg = bool(session.bind and session.bind.dialect.name == "postgresql")
     try:
         for task_id in candidate_ids:

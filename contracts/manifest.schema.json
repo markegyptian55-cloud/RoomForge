@@ -50,8 +50,8 @@
     },
     "test_every": { "type": "integer", "minimum": 0 },
     "pose_backend": {
-      "type": "string",
-      "enum": ["colmap_global", "colmap_incremental", "vggt_chunked", "map_anything"]
+      "type": ["string", "null"],
+      "enum": ["colmap_global", "colmap_incremental", "vggt_chunked", "map_anything", null]
     },
     "frames": {
       "type": "array",
