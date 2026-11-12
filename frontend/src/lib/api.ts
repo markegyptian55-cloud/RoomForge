@@ -1,6 +1,13 @@
 export type TaskStatus = "queued" | "claimed" | "running" | "completed" | "failed" | "cancelled";
 export type StageId = "01_extract" | "02_poses" | "03_train" | "04_export" | "05_track" | "06_diffusion" | "07_rebuild";
 export type RebuildMode = "masked_finetune" | "from_scratch";
+export type DiffusionModelVariant = "flux2_klein_4b" | "sdxl_inpaint_t4";
+
+export interface ResolveClickResponse { edit_id: string; ref_frame_idx: number; u: number; v: number; score: number; method: string; task_id: string; }
+export interface EditFrameItem { frame_idx: number; image_relpath: string | null; mask_key: string | null; mask_status: string; skip_frame: boolean; }
+export interface EditFramesResponse { edit_id: string; page: number; page_size: number; total: number; frames: EditFrameItem[]; }
+export interface MaskUpdateResponse { edit_id: string; frame_idx: number; status: string; skip_frame: boolean; mask_key?: string | null; }
+export interface EditSummaryItem { id: string; project_id: string; base_version_id: string | null; target_version_id: string | null; ref_frame_idx: number | null; prompt: string | null; chosen_seed_id: string | null; status: string; }
 
 export interface Project { id: string; name: string; status: string; active_version_id: string | null; created_at: string; }
 export interface TaskSummary { id: string; type: string; status: TaskStatus; progress_pct: number; stage?: StageId; message?: string | null; telemetry?: Telemetry | null; }
@@ -67,15 +74,16 @@ export class RoomApi {
     while (!signal?.aborted) { const project = await this.getProject(id); onUpdate(project); if (project.tasks.some((task) => task.status === "completed" || task.status === "failed" || task.status === "cancelled")) return project; await new Promise<void>((resolve) => { const timer = window.setTimeout(resolve, intervalMs); signal?.addEventListener("abort", () => { window.clearTimeout(timer); resolve(); }, { once: true }); }); }
     throw new DOMException("Polling stopped", "AbortError");
   }
-  versions(projectId: string): Promise<SceneVersion[]> { return request(this.path(`/api/projects/${projectId}/versions`), this.token); }
-  manifest(projectId: string, versionId: string): Promise<Manifest> { return request(this.path(`/api/projects/${projectId}/versions/${versionId}/manifest`), this.token); }
-  resolveClick(projectId: string, body: ViewerClickEvent): Promise<{ edit_id: string; ref_frame_idx: number; u: number; v: number }> { return request(this.path(`/api/projects/${projectId}/edits/resolve-click`), this.token, { method: "POST", body: JSON.stringify(body) }); }
-  refine(editId: string, points: Array<{ x: number; y: number; label: 1 | 0 }>): Promise<TaskSummary> { return request(this.path(`/api/edits/${editId}/refine`), this.token, { method: "POST", body: JSON.stringify({ points }) }); }
-  track(editId: string): Promise<TaskSummary> { return request(this.path(`/api/edits/${editId}/track`), this.token, { method: "POST" }); }
-  editFrames(editId: string, page = 1): Promise<unknown> { return request(this.path(`/api/edits/${editId}/frames?page=${page}`), this.token); }
-  updateMask(editId: string, frameIdx: number, body: FormData | { skip_frame: boolean }): Promise<unknown> { return request(this.path(`/api/edits/${editId}/masks/${frameIdx}`), this.token, { method: "PUT", headers: body instanceof FormData ? {} : jsonHeaders, body: body instanceof FormData ? body : JSON.stringify(body) }); }
-  previewSeeds(editId: string, prompt: string, seeds: number[], model_variant: string): Promise<TaskSummary> { return request(this.path(`/api/edits/${editId}/preview-seeds`), this.token, { method: "POST", body: JSON.stringify({ prompt, seeds, model_variant }) }); }
-  applyEdit(editId: string, chosen_seed_id: string, rebuild_mode: RebuildMode): Promise<TaskSummary> { return request(this.path(`/api/edits/${editId}/apply`), this.token, { method: "POST", body: JSON.stringify({ chosen_seed_id, rebuild_mode }) }); }
+  versions(projectId: string): Promise<SceneVersion[]> { return request(this.path(`/api/projects/${encodeURIComponent(projectId)}/versions`), this.token); }
+  manifest(projectId: string, versionId: string): Promise<Manifest> { return request(this.path(`/api/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}/manifest`), this.token); }
+  resolveClick(projectId: string, body: ViewerClickEvent): Promise<ResolveClickResponse> { return request(this.path(`/api/projects/${encodeURIComponent(projectId)}/edits/resolve-click`), this.token, { method: "POST", body: JSON.stringify(body) }); }
+  refine(editId: string, points: Array<{ x: number; y: number; label: 1 | 0 }>): Promise<TaskSummary> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/refine`), this.token, { method: "POST", body: JSON.stringify({ points }) }); }
+  track(editId: string): Promise<TaskSummary> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/track`), this.token, { method: "POST" }); }
+  editFrames(editId: string, page = 1, pageSize = 24): Promise<EditFramesResponse> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/frames?page=${encodeURIComponent(page)}&page_size=${encodeURIComponent(pageSize)}`), this.token); }
+  updateMask(editId: string, frameIdx: number, body: FormData | { skip_frame: boolean }): Promise<MaskUpdateResponse> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/masks/${encodeURIComponent(frameIdx)}`), this.token, { method: "PUT", headers: body instanceof FormData ? {} : jsonHeaders, body: body instanceof FormData ? body : JSON.stringify(body) }); }
+  previewSeeds(editId: string, prompt: string, seeds: number[], model_variant: DiffusionModelVariant): Promise<TaskSummary> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/preview-seeds`), this.token, { method: "POST", body: JSON.stringify({ prompt, seeds, model_variant }) }); }
+  applyEdit(editId: string, chosen_seed_id: string, rebuild_mode: RebuildMode, prompt?: string): Promise<TaskSummary & { edit_id: string; target_version_id: string; diffusion_task_id: string }> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/apply`), this.token, { method: "POST", body: JSON.stringify({ chosen_seed_id, rebuild_mode, prompt }) }); }
+  edits(projectId: string): Promise<EditSummaryItem[]> { return request(this.path(`/api/projects/${encodeURIComponent(projectId)}/edits`), this.token); }
 }
 
 export const roomApi = new RoomApi();
