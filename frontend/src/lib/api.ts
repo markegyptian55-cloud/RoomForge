@@ -11,6 +11,7 @@ export interface EditSession { id: string; status?: string; }
 export interface Manifest { [key: string]: unknown; }
 export interface ViewerClickEvent { screenX: number; screenY: number; worldHitColmap: [number, number, number] | null; rayOriginColmap: [number, number, number]; rayDirColmap: [number, number, number]; nearestFrameIdx: number | null; }
 export interface ViewerCameraPose { positionColmap: [number, number, number]; targetColmap: [number, number, number]; upColmap: [number, number, number]; fovDeg?: number; }
+export interface ViewerController { onUserClick: (handler: (ev: ViewerClickEvent) => void) => () => void; setCameraPose: (pose: ViewerCameraPose) => void; loadCameraPath: (poses: ViewerCameraPose[], durationMs?: number) => void; setActiveVersion: (versionId: string) => void; }
 
 export class ApiError extends Error { constructor(public readonly status: number, message: string) { super(message); this.name = "ApiError"; } }
 

@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ProgressPanel } from "@/components/ProgressPanel";
-import { roomApi, type ProjectDetail, type TaskSummary } from "@/lib/api";
+import Viewer3D from "@/components/Viewer3D";
+import { roomApi, type Manifest, type ProjectDetail, type TaskSummary } from "@/lib/api";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [projectId, setProjectId] = useState("");
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [error, setError] = useState("");
+  const [manifest, setManifest] = useState<Manifest>();
 
   useEffect(() => {
     void params.then(({ id }) => {
@@ -18,6 +20,11 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       );
     });
   }, [params]);
+
+  useEffect(() => {
+    if (!projectId || !project?.active_version_id) return;
+    void roomApi.manifest(projectId, project.active_version_id).then(setManifest).catch(() => setManifest(undefined));
+  }, [projectId, project?.active_version_id]);
 
   const task: TaskSummary | undefined = project?.tasks[0];
   const terminal = task?.status === "completed" || task?.status === "failed" || task?.status === "cancelled";
@@ -49,14 +56,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
               <span className="version-pill">{project?.active_version_id ? "ACTIVE VERSION" : "BASE BUILD"}</span>
             </div>
             <div className="scene-grid">
-              <div className="viewer-placeholder">
-                <div className="viewer-grid" />
-                <div>
-                  <p className="eyebrow">VIEWER3D</p>
-                  <h2>Your scene will appear here</h2>
-                  <p>Interactive .spz rendering arrives in the next slice.</p>
-                </div>
-              </div>
+              <Viewer3D
+                manifest={manifest as Parameters<typeof Viewer3D>[0]["manifest"]}
+                assetBaseUrl={
+                  projectId && project?.active_version_id
+                    ? `/api/storage/${encodeURIComponent(projectId)}/${encodeURIComponent(project.active_version_id)}`
+                    : ""
+                }
+              />
               {task ? (
                 <ProgressPanel
                   progress={task.progress_pct}
