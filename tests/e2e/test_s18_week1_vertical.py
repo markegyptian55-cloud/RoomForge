@@ -162,7 +162,7 @@ def test_week1_vertical_pipeline_backend_to_artifacts(tmp_path: Path, monkeypatc
         max_upload_bytes=16 * 1024 * 1024,
         auth_required=False,
     )
-    for module in ("app.routers.projects", "app.routers.scenes"):
+    for module in ("app.routers.projects", "app.routers.scenes", "app.security"):
         monkeypatch.setattr(f"{module}.get_settings", lambda: settings)
 
     def override_db():

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -22,7 +23,7 @@ from app.security import hash_password  # noqa: E402
 
 
 @pytest.fixture()
-def isolated_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def isolated_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     storage_dir = tmp_path / "storage"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("LOCAL_STORAGE_DIR", str(storage_dir))
@@ -78,7 +79,12 @@ def isolated_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClie
         session.add(proj)
         session.add(models_mod.SceneVersion(id="v1", project_id="proj-s21", label="v1", manifest_relpath=manifest_rel))
         session.commit()
-    return TestClient(app)
+    try:
+        with TestClient(app) as client:
+            yield client
+    finally:
+        monkeypatch.undo()
+        cfg.get_settings.cache_clear()
 
 
 def _auth(client: TestClient, email: str, password: str) -> dict[str, str]:

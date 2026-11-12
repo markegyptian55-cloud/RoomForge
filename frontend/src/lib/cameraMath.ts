@@ -13,7 +13,7 @@ export interface TrainingFrame {
   cam_from_world: number[][];
 }
 
-export interface CameraPathPose extends ViewerCameraPose {}
+export type CameraPathPose = ViewerCameraPose;
 
 export function applyMatrix4RowMajor(matrix: readonly number[], point: readonly number[]): Vec3 {
   if (matrix.length !== 16 || point.length !== 3) {

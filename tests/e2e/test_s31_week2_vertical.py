@@ -150,7 +150,7 @@ def _setup_test_env(
         max_upload_bytes=16 * 1024 * 1024,
         auth_required=False,
     )
-    for mod in ("app.routers.projects", "app.routers.scenes", "app.routers.edits"):
+    for mod in ("app.routers.projects", "app.routers.scenes", "app.routers.edits", "app.security"):
         monkeypatch.setattr(f"{mod}.get_settings", lambda: settings)
     with session_factory() as session:
         session.add(Project(id="proj-w2", name="Week 2 Studio", status="completed", active_version_id="v1"))

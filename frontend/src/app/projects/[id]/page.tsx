@@ -39,10 +39,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const displayVersionId = selectedVersionId ?? project?.active_version_id ?? null;
 
   useEffect(() => {
-    if (!projectId || !displayVersionId) {
-      setVersionManifest(null);
-      return;
-    }
+    if (!projectId || !displayVersionId) return;
     let cancelled = false;
     void roomApi
       .manifest(projectId, displayVersionId)
@@ -57,7 +54,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     };
   }, [projectId, displayVersionId]);
 
-  const activeManifest = versionManifest?.versionId === displayVersionId ? versionManifest.data : undefined;
+  const activeManifest =
+    displayVersionId && versionManifest?.versionId === displayVersionId ? versionManifest.data : undefined;
   const activeAssetBaseUrl =
     activeManifest && projectId && displayVersionId
       ? `/api/storage/${encodeURIComponent(projectId)}/${encodeURIComponent(displayVersionId)}`

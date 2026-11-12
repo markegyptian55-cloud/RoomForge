@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpRight, Plus, UploadCloud } from "lucide-react";
 import { useEffect, useState } from "react";
 import { roomApi, type Project } from "@/lib/api";
 
 export default function HomePage() {
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [name, setName] = useState("Living room");
   const [open, setOpen] = useState(false);
@@ -26,7 +28,7 @@ export default function HomePage() {
     try {
       const project = await roomApi.createProject(name.trim() || "Untitled room");
       await roomApi.uploadVideo(project.id, file, (pct) => setUploadPct(pct));
-      window.location.href = `/projects/${project.id}`;
+      router.push(`/projects/${project.id}`);
     } catch (reason) {
       setUploadPct(null);
       setError(reason instanceof Error ? reason.message : "Could not start the room build.");

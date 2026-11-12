@@ -87,7 +87,9 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   });
 
   const modeRef = useRef<Mode>(mode);
+  const initialCollisionRef = useRef<boolean>(collision);
   modeRef.current = mode;
+  initialCollisionRef.current = collision;
   transformRef.current = flattenMatrix(manifest?.T_viewer_from_colmap);
   versionCallbackRef.current = onVersionChange;
 
@@ -297,7 +299,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     renderer.domElement.addEventListener("click", onClick);
 
     if (manifest) {
-      void loadSplats(renderer, scene, manifest, { baseUrl: assetBaseUrl, showCollision: collision })
+      void loadSplats(renderer, scene, manifest, { baseUrl: assetBaseUrl, showCollision: initialCollisionRef.current })
         .then((result) => {
           if (disposed) {
             disposeLoadedSplats(scene, result);
