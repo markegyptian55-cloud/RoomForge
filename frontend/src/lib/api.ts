@@ -21,10 +21,11 @@ const asErrorMessage = (body: unknown): string => {
 };
 
 async function request<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
-  const auth = token ? { Authorization: `Bearer ${token}` } : {};
-  const headers = init?.body instanceof FormData
-    ? { ...auth, ...init.headers }
-    : { ...jsonHeaders, ...auth, ...init?.headers };
+  const headers = new Headers(init?.headers);
+  if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(path, { ...init, headers });
   const body: unknown = await response.json().catch(() => undefined);
   if (!response.ok) throw new ApiError(response.status, asErrorMessage(body));
