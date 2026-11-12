@@ -35,7 +35,10 @@ def _b64(value: bytes) -> str:
 
 
 def _unb64(value: str) -> bytes:
-    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    decoded = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    if _b64(decoded) != value:
+        raise ValueError("non-canonical base64url")
+    return decoded
 
 
 def create_access_token(subject: str, expires_in: int = 3600) -> str:
@@ -75,3 +78,12 @@ def get_current_user(authorization: str | None = Header(default=None)) -> str | 
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required")
     return str(verify_access_token(authorization[7:])["sub"])
+
+
+def get_storage_actor(
+    authorization: str | None = Header(default=None),
+    x_worker_token: str | None = Header(default=None),
+) -> tuple[bool, str | None]:
+    if x_worker_token and hmac.compare_digest(x_worker_token, get_settings().worker_token):
+        return (True, None)
+    return (False, get_current_user(authorization))

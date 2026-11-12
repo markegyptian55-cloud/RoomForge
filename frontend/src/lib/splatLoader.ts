@@ -108,13 +108,21 @@ export async function loadSplats(
       : "";
 
   if (url && supportsSpark(renderer)) {
+    let sparkRenderer: THREE.Object3D | null = null;
+    let mesh: (THREE.Object3D & { initialized: Promise<unknown>; splats?: { getNumSplats: () => number }; packedSplats?: { numSplats?: number }; dispose?: () => void }) | null = null;
     try {
       const { SparkRenderer, SplatMesh } = await import("@sparkjsdev/spark");
-      const sparkRenderer = new SparkRenderer({ renderer });
-      const mesh = new SplatMesh({ url });
+      sparkRenderer = new SparkRenderer({ renderer });
+      mesh = new SplatMesh({ url, raycastable: true });
+      await mesh.initialized;
+      const splatCount = mesh.splats?.getNumSplats() ?? mesh.packedSplats?.numSplats ?? 0;
       scene.add(sparkRenderer, mesh);
-      return { mode: "spark", object: mesh, sparkRenderer, count: 0, collision };
+      return { mode: "spark", object: mesh, sparkRenderer, count: splatCount, collision };
     } catch (error) {
+      mesh?.dispose?.();
+      if (sparkRenderer && "dispose" in sparkRenderer && typeof sparkRenderer.dispose === "function") {
+        (sparkRenderer as { dispose: () => void }).dispose();
+      }
       console.warn("Spark splat loading unavailable; using sparse points.", error);
     }
   }
@@ -139,6 +147,7 @@ export function disposeLoadedSplats(scene: THREE.Scene, asset: SplatLoadResult |
         dispose?: () => void;
       };
       renderable.geometry?.dispose();
+      renderable.dispose?.();
       if (Array.isArray(renderable.material)) {
         renderable.material.forEach((mat) => mat.dispose());
       } else {

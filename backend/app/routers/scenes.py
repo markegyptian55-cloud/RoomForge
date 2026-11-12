@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import get_db
 from ..models import Project, SceneVersion
-from ..security import get_current_user
+from ..security import get_current_user, get_storage_actor
 from ..storage import get_storage
 from ..storage.base import validate_key
 from .projects import _project
@@ -39,25 +39,48 @@ def manifest(project_id: str, version_id: str, session: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="manifest not found") from exc
 
 
+def _storage_project(session: Session, project_id: str, actor: tuple[bool, str | None]) -> Project:
+    is_worker, user_id = actor
+    if is_worker:
+        project = session.get(Project, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="project not found")
+        return project
+    return _project(session, project_id, user_id)
+
+
 @router.post("/api/storage/{project_id}/{version_id}/upload")
-def storage_upload(project_id: str, version_id: str, file: UploadFile, session: Session = Depends(get_db), user_id: str | None = Depends(get_current_user)) -> dict[str, object]:
-    _project(session, project_id, user_id)
-    if not session.scalar(select(SceneVersion).where(SceneVersion.id == version_id, SceneVersion.project_id == project_id)):
-        raise HTTPException(status_code=404, detail="version not found")
+def storage_upload(
+    project_id: str,
+    version_id: str,
+    file: UploadFile,
+    session: Session = Depends(get_db),
+    actor: tuple[bool, str | None] = Depends(get_storage_actor),
+) -> dict[str, object]:
+    _storage_project(session, project_id, actor)
     filename = file.filename or "upload"
     try:
+        safe_version = validate_key(version_id)
+        if "/" in safe_version:
+            raise ValueError("version_id must be a single path segment")
         key = validate_key(filename)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     storage = get_storage(get_settings())
-    full_key = f"{project_id}/{version_id}/{key}"
+    full_key = f"{project_id}/{safe_version}/{key}"
     written = storage.put_stream(full_key, file.file)
     return {"key": full_key, "bytes": written}
 
 
 @router.get("/api/storage/{project_id}/{version_id}/{path:path}", response_model=None)
-def storage_download(project_id: str, version_id: str, path: str, session: Session = Depends(get_db), user_id: str | None = Depends(get_current_user)) -> StreamingResponse | FileResponse:
-    _project(session, project_id, user_id)
+def storage_download(
+    project_id: str,
+    version_id: str,
+    path: str,
+    session: Session = Depends(get_db),
+    actor: tuple[bool, str | None] = Depends(get_storage_actor),
+) -> StreamingResponse | FileResponse:
+    _storage_project(session, project_id, actor)
     try:
         key = validate_key(f"{project_id}/{version_id}/{path}")
         storage = get_storage(get_settings())

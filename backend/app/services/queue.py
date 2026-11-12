@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from ..models import Task, TaskAttempt
+from ..models import Project, SceneVersion, Task, TaskAttempt
 from .progress import compute_progress
 
 
@@ -100,6 +100,42 @@ def update_progress(session: Session, task_id: str, attempt_id: str, stage: str,
     return progress
 
 
+def _register_completed_version(
+    session: Session,
+    task: Task,
+    result: dict[str, Any],
+    result_manifest_key: str | None,
+) -> None:
+    if task.task_type not in {"reconstruct_week1", "rebuild_week2"}:
+        return
+    version_id = str(result.get("version_id") or "")
+    if not version_id and result_manifest_key:
+        parts = result_manifest_key.split("/")
+        if len(parts) >= 3:
+            version_id = parts[1]
+    if not version_id:
+        return
+    existing = session.get(SceneVersion, version_id)
+    if existing is None:
+        session.add(
+            SceneVersion(
+                id=version_id,
+                project_id=task.project_id,
+                parent_version_id=result.get("parent_version_id"),
+                label=str(result.get("label") or version_id),
+                manifest_relpath=result_manifest_key,
+                spz_relpath=f"{task.project_id}/{version_id}/scene.spz",
+                ply_relpath=f"{task.project_id}/{version_id}/scene.ply",
+            )
+        )
+    else:
+        existing.manifest_relpath = result_manifest_key or existing.manifest_relpath
+    project = session.get(Project, task.project_id)
+    if project is not None:
+        project.active_version_id = version_id
+        project.status = "completed"
+
+
 def complete_task(session: Session, task_id: str, attempt_id: str, result_payload: dict[str, Any],
                   result_manifest_key: str | None = None) -> None:
     task = _locked_task(session, task_id)
@@ -111,6 +147,7 @@ def complete_task(session: Session, task_id: str, attempt_id: str, result_payloa
     attempt = session.get(TaskAttempt, attempt_id)
     if attempt:
         attempt.status, attempt.finished_at = "completed", _now()
+    _register_completed_version(session, task, result, result_manifest_key)
     session.commit()
 
 

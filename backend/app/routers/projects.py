@@ -71,7 +71,8 @@ def get_project(project_id: str, session: Session = Depends(get_db), user_id: st
     versions = session.scalars(select(SceneVersion).where(SceneVersion.project_id == project.id)).all()
     tasks = session.scalars(select(Task).where(Task.project_id == project.id).order_by(Task.created_at.desc())).all()
     return {**_view(project), "versions": [{"id": v.id, "label": v.label} for v in versions],
-            "tasks": [{"id": t.id, "type": t.task_type, "status": t.status, "progress_pct": t.progress_pct} for t in tasks],
+            "tasks": [{"id": t.id, "type": t.task_type, "status": t.status, "stage": t.current_stage,
+                       "progress_pct": t.progress_pct, "message": t.message} for t in tasks],
             "edit_sessions": []}
 
 

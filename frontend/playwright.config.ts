@@ -20,17 +20,20 @@ function resolveCachedChromium(): string | undefined {
 
 const executablePath = resolveCachedChromium();
 
+const port = process.env.ROOM3D_FRONTEND_PORT ?? "3100";
+const baseURL = `http://127.0.0.1:${port}`;
+
 export default defineConfig({
   testDir: "./tests",
   testMatch: "**/*.spec.ts",
   webServer: {
-    command: "npx next dev -H 127.0.0.1 -p 3100",
-    url: "http://127.0.0.1:3100",
-    reuseExistingServer: true,
+    command: `npx next dev -H 127.0.0.1 -p ${port}`,
+    url: baseURL,
+    reuseExistingServer: !process.env.ROOM3D_FRONTEND_PORT,
     timeout: 120000,
   },
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL,
     ...devices["Desktop Chrome"],
     headless: true,
     launchOptions: {
