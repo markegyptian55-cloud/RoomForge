@@ -41,6 +41,10 @@
     "masked_finetune",
     "from_scratch"
   ],
+  "diffusion_models": [
+    "flux2_klein_4b",
+    "sdxl_inpaint_t4"
+  ],
   "mask_contract": {
     "format": "PNG",
     "channels": 1,
