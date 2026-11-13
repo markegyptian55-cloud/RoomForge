@@ -7,9 +7,26 @@ import { useEffect, useState } from "react";
 import { roomApi, type Project } from "@/lib/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+const DEMO_PROJECTS: Project[] = [
+  {
+    id: "realistic-room",
+    name: "Modern Luxury Suite (Photorealistic 3D)",
+    status: "completed",
+    active_version_id: "realistic-v1",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "demo-room",
+    name: "Demo Living Room (3D Gaussian Splats)",
+    status: "completed",
+    active_version_id: "v1",
+    created_at: new Date().toISOString(),
+  },
+];
+
 export default function HomePage() {
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(DEMO_PROJECTS);
   const [name, setName] = useState("Living room");
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -17,7 +34,18 @@ export default function HomePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    void roomApi.listProjects().then(setProjects).catch(() => undefined);
+    roomApi
+      .listProjects()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setProjects(data);
+        } else {
+          setProjects(DEMO_PROJECTS);
+        }
+      })
+      .catch(() => {
+        setProjects(DEMO_PROJECTS);
+      });
   }, []);
 
   const create = async () => {

@@ -19,7 +19,7 @@ import {
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [projectId, setProjectId] = useState("");
   const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [versionManifest, setVersionManifest] = useState<{ versionId: string; data: Manifest } | null>(null);
+  const [versionManifest, setVersionManifest] = useState<{ versionId: string; data: Manifest; isStaticDemo?: boolean } | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [controller, setController] = useState<ViewerController | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -42,13 +42,44 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       })
       .catch((reason: unknown) => {
         if (!cancelled) {
+          if (projectId === "realistic-room") {
+            setProject({
+              id: "realistic-room",
+              name: "Modern Luxury Suite (Photorealistic 3D)",
+              status: "completed",
+              active_version_id: "realistic-v1",
+              created_at: new Date().toISOString(),
+              versions: [
+                { id: "realistic-v1", label: "V1 Base (Royal Navy Sofa)" },
+                { id: "realistic-v2", label: "V2 Edited (Red Velvet Sofa)" },
+              ],
+              tasks: [{ id: "t-real", type: "reconstruct", status: "completed", progress_pct: 100 }],
+              edit_sessions: [],
+            });
+            return;
+          } else if (projectId === "demo-room") {
+            setProject({
+              id: "demo-room",
+              name: "Demo Living Room (3D Gaussian Splats)",
+              status: "completed",
+              active_version_id: "v1",
+              created_at: new Date().toISOString(),
+              versions: [
+                { id: "v1", label: "V1 Base (Sparse Splats)" },
+                { id: "v2", label: "V2 Staged" },
+              ],
+              tasks: [{ id: "t-demo", type: "reconstruct", status: "completed", progress_pct: 100 }],
+              edit_sessions: [],
+            });
+            return;
+          }
           setError(reason instanceof Error ? reason.message : "Project unavailable.");
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [params]);
+  }, [params, projectId]);
 
   const displayVersionId = selectedVersionId ?? project?.active_version_id ?? null;
 
@@ -58,10 +89,20 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     void roomApi
       .manifest(projectId, displayVersionId)
       .then((data) => {
-        if (!cancelled) setVersionManifest({ versionId: displayVersionId, data });
+        if (!cancelled) setVersionManifest({ versionId: displayVersionId, data, isStaticDemo: false });
       })
-      .catch(() => {
+      .catch(async () => {
         if (!cancelled) {
+          try {
+            const res = await fetch(`/demo-assets/${encodeURIComponent(projectId)}/${encodeURIComponent(displayVersionId)}/manifest.json`);
+            if (res.ok) {
+              const staticData = (await res.json()) as Manifest;
+              if (!cancelled) {
+                setVersionManifest({ versionId: displayVersionId, data: staticData, isStaticDemo: true });
+                return;
+              }
+            }
+          } catch {}
           const fallback = project?.versions?.[0]?.id;
           if (fallback && fallback !== displayVersionId) {
             setSelectedVersionId(fallback);
@@ -73,13 +114,15 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     return () => {
       cancelled = true;
     };
-  }, [projectId, displayVersionId]);
+  }, [projectId, displayVersionId, project?.versions]);
 
   const activeManifest =
     displayVersionId && versionManifest?.versionId === displayVersionId ? versionManifest.data : undefined;
   const activeAssetBaseUrl =
     activeManifest && projectId && displayVersionId
-      ? `/api/storage/${encodeURIComponent(projectId)}/${encodeURIComponent(displayVersionId)}`
+      ? (versionManifest?.isStaticDemo
+          ? `/demo-assets/${encodeURIComponent(projectId)}/${encodeURIComponent(displayVersionId)}`
+          : `/api/storage/${encodeURIComponent(projectId)}/${encodeURIComponent(displayVersionId)}`)
       : "";
 
   const task: TaskSummary | undefined =
