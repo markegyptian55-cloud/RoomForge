@@ -18,7 +18,7 @@ export interface EditSession { id: string; status?: string; }
 export interface Manifest { [key: string]: unknown; }
 export interface ViewerClickEvent { screenX: number; screenY: number; worldHitColmap: [number, number, number] | null; rayOriginColmap: [number, number, number]; rayDirColmap: [number, number, number]; nearestFrameIdx: number | null; }
 export interface ViewerCameraPose { positionColmap: [number, number, number]; targetColmap: [number, number, number]; upColmap: [number, number, number]; fovDeg?: number; }
-export interface ViewerController { onUserClick: (handler: (ev: ViewerClickEvent) => void) => () => void; setCameraPose: (pose: ViewerCameraPose) => void; loadCameraPath: (poses: ViewerCameraPose[], durationMs?: number) => void; setActiveVersion: (versionId: string) => void; }
+export interface ViewerController { onUserClick: (handler: (ev: ViewerClickEvent) => void) => () => void; setCameraPose: (pose: ViewerCameraPose) => void; loadCameraPath: (poses: ViewerCameraPose[], durationMs?: number) => void; setActiveVersion: (versionId: string) => void; modifyObject?: (targetName: string, prompt: string, model: string) => Promise<boolean>; }
 
 export class ApiError extends Error { constructor(public readonly status: number, message: string) { super(message); this.name = "ApiError"; } }
 
@@ -84,6 +84,12 @@ export class RoomApi {
   previewSeeds(editId: string, prompt: string, seeds: number[], model_variant: DiffusionModelVariant): Promise<TaskSummary> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/preview-seeds`), this.token, { method: "POST", body: JSON.stringify({ prompt, seeds, model_variant }) }); }
   applyEdit(editId: string, chosen_seed_id: string, rebuild_mode: RebuildMode, prompt?: string): Promise<TaskSummary & { edit_id: string; target_version_id: string; diffusion_task_id: string }> { return request(this.path(`/api/edits/${encodeURIComponent(editId)}/apply`), this.token, { method: "POST", body: JSON.stringify({ chosen_seed_id, rebuild_mode, prompt }) }); }
   edits(projectId: string): Promise<EditSummaryItem[]> { return request(this.path(`/api/projects/${encodeURIComponent(projectId)}/edits`), this.token); }
+  quickEdit(projectId: string, targetObject: string, prompt: string, model: DiffusionModelVariant = "flux2_klein_4b", apiKey?: string): Promise<{ success: boolean; new_version_id: string; label: string; message: string }> {
+    return request(this.path(`/api/projects/${encodeURIComponent(projectId)}/quick-edit`), this.token, {
+      method: "POST",
+      body: JSON.stringify({ target_object: targetObject, prompt, model, api_key: apiKey }),
+    });
+  }
 }
 
 export const roomApi = new RoomApi();

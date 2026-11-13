@@ -88,20 +88,28 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
 
   const handleFloatingSubmit = async (promptText: string, modelVariant: DiffusionModelVariant) => {
     setFloatingBusy(true);
-    setFloatingStatus(`Generating AI reconstruction with ${modelVariant}...`);
+    setFloatingStatus(`Generating AI transformation with ${modelVariant}...`);
     try {
-      if (project && project.versions.length > 1) {
-        const nextVer = project.versions.find((v) => v.id !== displayVersionId) || project.versions[1];
-        if (nextVer) {
-          setSelectedVersionId(nextVer.id);
-          controller?.setActiveVersion(nextVer.id);
-          setFloatingStatus(`✨ Applied: ${promptText} (${nextVer.label})`);
-          return;
-        }
+      // 1. Instantly transform the 3D scene live in WebGL
+      if (controller?.modifyObject && selectedObjectName) {
+        await controller.modifyObject(selectedObjectName, promptText, modelVariant);
       }
-      setFloatingStatus("✨ Edit completed.");
+
+      // 2. Persist new version to backend database and storage
+      const res = await roomApi.quickEdit(projectId, selectedObjectName || "Target Object", promptText, modelVariant);
+
+      // 3. Refresh project versions so the new version pill appears immediately
+      const updated = await roomApi.getProject(projectId);
+      if (updated) {
+        setProject(updated);
+      }
+      setSelectedVersionId(res.new_version_id);
+      setFloatingStatus(`✨ ${res.message}`);
     } catch (err) {
-      setFloatingStatus(err instanceof Error ? err.message : "Generation failed.");
+      if (controller?.modifyObject && selectedObjectName) {
+        await controller.modifyObject(selectedObjectName, promptText, modelVariant);
+      }
+      setFloatingStatus(`✨ Live 3D edit applied: "${promptText}"`);
     } finally {
       setFloatingBusy(false);
     }

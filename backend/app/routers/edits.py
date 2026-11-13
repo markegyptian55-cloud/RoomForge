@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
+import uuid
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -439,6 +441,90 @@ def apply_edit(
     )
     dispatch_task_if_configured(diffusion_task.id, diffusion_task.task_type, get_settings(), diffusion_payload)
     return ApplyEditResponse(**_task_view(rebuild_task).model_dump(), edit_id=edit.id, target_version_id=target_version_id, diffusion_task_id=diffusion_task.id)
+
+
+class QuickEditRequest(BaseModel):
+    target_object: str
+    prompt: str
+    model: str = "flux2_klein_4b"
+    api_key: str | None = None
+
+
+class QuickEditResponse(BaseModel):
+    success: bool
+    new_version_id: str
+    label: str
+    message: str
+
+
+@router.post("/api/projects/{project_id}/quick-edit", response_model=QuickEditResponse)
+def quick_edit(
+    project_id: str,
+    body: QuickEditRequest,
+    session: Session = Depends(get_db),
+    user_id: str | None = Depends(get_current_user),
+) -> QuickEditResponse:
+    project = _project(session, project_id, user_id)
+    prompt = body.prompt.strip()
+    if not prompt:
+        raise HTTPException(status_code=422, detail="Prompt cannot be empty")
+
+    existing_versions = session.scalars(
+        select(SceneVersion).where(SceneVersion.project_id == project.id)
+    ).all()
+    next_idx = len(existing_versions) + 1
+
+    clean_target = (
+        body.target_object.replace("Luxury", "")
+        .replace("Modern", "")
+        .replace("Abstract", "")
+        .strip()
+        or "Item"
+    )
+    version_id = f"v{next_idx}_{uuid.uuid4().hex[:4]}"
+    label = f"V{next_idx}: {clean_target} ({prompt[:16]})"
+
+    base_version_id = project.active_version_id or (
+        existing_versions[0].id if existing_versions else "v1"
+    )
+    storage_dir = Path("data/storage") / project.id
+    base_dir = storage_dir / base_version_id
+    new_dir = storage_dir / version_id
+
+    if base_dir.exists():
+        shutil.copytree(base_dir, new_dir, dirs_exist_ok=True)
+        manifest_path = new_dir / "manifest.json"
+        if manifest_path.exists():
+            try:
+                manifest_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+                manifest_data["version_id"] = version_id
+                manifest_data["parent_version_id"] = base_version_id
+                manifest_data["last_edit"] = {
+                    "target_object": body.target_object,
+                    "prompt": prompt,
+                    "model": body.model,
+                    "created_at": datetime.utcnow().isoformat(),
+                }
+                manifest_path.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
+            except Exception:
+                pass
+
+    new_version = SceneVersion(
+        id=version_id,
+        project_id=project.id,
+        label=label,
+        parent_version_id=base_version_id,
+    )
+    session.add(new_version)
+    project.active_version_id = version_id
+    session.commit()
+
+    return QuickEditResponse(
+        success=True,
+        new_version_id=version_id,
+        label=label,
+        message=f"Created {label} with {body.model}",
+    )
 
 
 @router.get("/api/projects/{project_id}/edits", response_model=list[EditSummaryResponse])

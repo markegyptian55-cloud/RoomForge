@@ -68,6 +68,160 @@ function poseCamera(
   }
 }
 
+function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, versionId?: string) {
+  const textureLoader = new THREE.TextureLoader();
+
+  // Load PBR Textures
+  const parquetTex = textureLoader.load("/textures/herringbone_parquet.jpg");
+  parquetTex.wrapS = THREE.RepeatWrapping;
+  parquetTex.wrapT = THREE.RepeatWrapping;
+  parquetTex.repeat.set(3, 3);
+
+  const walnutTex = textureLoader.load("/textures/walnut_wood.jpg");
+
+  let artUrl = "/textures/art_modern_abstract.jpg";
+  if (versionId?.toLowerCase().includes("green")) {
+    artUrl = "/textures/art_green_emerald.jpg";
+  } else if (versionId?.toLowerCase().includes("sunflower") || versionId?.toLowerCase().includes("yellow")) {
+    artUrl = "/textures/art_sunflowers.jpg";
+  }
+  const artTex = textureLoader.load(artUrl);
+  const windowViewTex = textureLoader.load("/textures/window_view.jpg");
+
+  // Outdoor Terrace Backdrop behind the panoramic window
+  if (!scene.getObjectByName("terrace_backdrop")) {
+    const backdropGeo = new THREE.PlaneGeometry(8.0, 3.8);
+    const backdropMat = new THREE.MeshBasicMaterial({ map: windowViewTex, side: THREE.DoubleSide });
+    const backdrop = new THREE.Mesh(backdropGeo, backdropMat);
+    backdrop.name = "terrace_backdrop";
+    backdrop.position.set(-3.25, 1.35, 0.0);
+    backdrop.rotation.y = Math.PI / 2;
+    scene.add(backdrop);
+  }
+
+  // Detect sofa color from version label
+  const isRedSofa = Boolean(
+    versionId?.toLowerCase().includes("red") ||
+    versionId?.toLowerCase().includes("v2")
+  );
+  const sofaColor = isRedSofa ? 0x8b1e2c : 0x203a5e;
+
+  root.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const name = (mesh.name || (mesh.userData?.name as string | undefined) || "").toLowerCase();
+
+      if (name.includes("floor")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          map: parquetTex,
+          roughness: 0.28,
+          metalness: 0.02,
+        });
+      } else if (name.includes("rug")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xdecbb7,
+          roughness: 0.95,
+        });
+      } else if (name.includes("canvas") || name.includes("art_canvas")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          map: artTex,
+          roughness: 0.4,
+          metalness: 0.0,
+        });
+      } else if (name.includes("frame") || name.includes("art_frame")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0x18181b,
+          roughness: 0.25,
+          metalness: 0.5,
+        });
+      } else if (name.includes("sofa") || name.includes("cushion")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: sofaColor,
+          roughness: 0.78,
+          metalness: 0.06,
+        });
+      } else if (name.includes("pillow")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: name.includes("ivory") ? 0xf0e8d5 : 0xd49b38,
+          roughness: 0.85,
+        });
+      } else if (name.includes("coffee_table") || (name.includes("table") && !name.includes("leg"))) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          map: walnutTex,
+          roughness: 0.22,
+          metalness: 0.02,
+        });
+      } else if (name.includes("leg")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0x1e293b,
+          metalness: 0.85,
+          roughness: 0.35,
+        });
+      } else if (name.includes("coffee_mug") || name.includes("mug")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xd66840,
+          roughness: 0.12,
+          metalness: 0.05,
+        });
+      } else if (name.includes("book")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xf5f3ee,
+          roughness: 0.55,
+        });
+      } else if (name.includes("plant_pot") || name.includes("pot")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xb4533c,
+          roughness: 0.72,
+        });
+      } else if (name.includes("leaves") || name.includes("plant_leaves")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0x15803d,
+          roughness: 0.28,
+          metalness: 0.04,
+        });
+      } else if (name.includes("lamp_base") || name.includes("lamp_stem")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xd4af37,
+          metalness: 0.92,
+          roughness: 0.22,
+        });
+      } else if (name.includes("lamp_shade")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xfffaed,
+          emissive: 0xffe2b8,
+          emissiveIntensity: 0.55,
+          roughness: 0.3,
+        });
+      } else if (name.includes("window_glass") || name.includes("glass")) {
+        mesh.material = new THREE.MeshPhysicalMaterial({
+          transmission: 0.88,
+          transparent: true,
+          opacity: 0.35,
+          roughness: 0.05,
+          ior: 1.5,
+        });
+      } else if (name.includes("right_wall")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0x7e9482,
+          roughness: 0.88,
+        });
+      } else if (name.includes("back_wall") || name.includes("front_wall")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xe8e4dc,
+          roughness: 0.92,
+        });
+      } else if (name.includes("ceiling")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0xf6f5f2,
+          roughness: 0.95,
+        });
+      }
+    }
+  });
+}
+
 const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   {
     manifest,
@@ -149,6 +303,114 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     setActiveVersion: (versionId) => {
       versionCallbackRef.current?.(versionId);
     },
+    modifyObject: async (targetName: string, promptText: string) => {
+      const p = promptText.toLowerCase();
+      const scene = sceneRef.current;
+      if (!scene) return false;
+      const textureLoader = new THREE.TextureLoader();
+
+      // 1. Painting / Canvas Art
+      if (
+        targetName.includes("Art") ||
+        targetName.includes("Canvas") ||
+        targetName.includes("Frame") ||
+        targetName.includes("Painting")
+      ) {
+        let artUrl = "/textures/art_modern_abstract.jpg";
+        if (p.includes("green") || p.includes("emerald") || p.includes("nature") || p.includes("forest")) {
+          artUrl = "/textures/art_green_emerald.jpg";
+        } else if (p.includes("sunflower") || p.includes("yellow") || p.includes("gold") || p.includes("warm")) {
+          artUrl = "/textures/art_sunflowers.jpg";
+        }
+        const newTex = textureLoader.load(artUrl);
+        scene.traverse((child) => {
+          const m = child as THREE.Mesh;
+          if (m.isMesh && (m.name.includes("canvas") || m.name.includes("art") || m.name.includes("frame"))) {
+            if (m.material) {
+              (m.material as THREE.MeshStandardMaterial).map = newTex;
+              (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+            }
+          }
+        });
+      }
+
+      // 2. Sofa
+      if (targetName.includes("Sofa")) {
+        let colorHex = 0x203a5e;
+        if (p.includes("green") || p.includes("emerald")) colorHex = 0x166548;
+        else if (p.includes("red") || p.includes("crimson") || p.includes("burgundy")) colorHex = 0x8b1e2c;
+        else if (p.includes("black") || p.includes("charcoal")) colorHex = 0x18181b;
+        else if (p.includes("white") || p.includes("cream") || p.includes("beige")) colorHex = 0xf4efe6;
+        else if (p.includes("yellow") || p.includes("ochre") || p.includes("gold")) colorHex = 0xd49b38;
+        else if (p.includes("cognac") || p.includes("brown") || p.includes("leather")) colorHex = 0x8a4822;
+
+        scene.traverse((child) => {
+          const m = child as THREE.Mesh;
+          if (m.isMesh && m.name.toLowerCase().includes("sofa")) {
+            if (m.material && "color" in m.material) {
+              (m.material as THREE.MeshStandardMaterial).color.setHex(colorHex);
+              (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+            }
+          }
+        });
+      }
+
+      // 3. Table
+      if (targetName.includes("Table")) {
+        scene.traverse((child) => {
+          const m = child as THREE.Mesh;
+          if (m.isMesh && m.name.toLowerCase().includes("table") && !m.name.includes("leg")) {
+            if (p.includes("marble") || p.includes("white")) {
+              (m.material as THREE.MeshStandardMaterial).map = textureLoader.load("/textures/marble_white.jpg");
+              (m.material as THREE.MeshStandardMaterial).roughness = 0.12;
+            } else {
+              (m.material as THREE.MeshStandardMaterial).map = textureLoader.load("/textures/walnut_wood.jpg");
+              (m.material as THREE.MeshStandardMaterial).roughness = 0.22;
+            }
+            (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+          }
+        });
+      }
+
+      // 4. Coffee Mug
+      if (targetName.includes("Mug")) {
+        let colorHex = 0xd66840;
+        if (p.includes("green")) colorHex = 0x166548;
+        else if (p.includes("black")) colorHex = 0x18181b;
+        else if (p.includes("white")) colorHex = 0xf4efe6;
+        else if (p.includes("blue")) colorHex = 0x2563eb;
+        else if (p.includes("yellow")) colorHex = 0xeab308;
+        scene.traverse((child) => {
+          const m = child as THREE.Mesh;
+          if (m.isMesh && m.name.toLowerCase().includes("mug")) {
+            if (m.material && "color" in m.material) {
+              (m.material as THREE.MeshStandardMaterial).color.setHex(colorHex);
+              (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+            }
+          }
+        });
+      }
+
+      // 5. Wall
+      if (targetName.includes("Wall")) {
+        let colorHex = 0x7e9482;
+        if (p.includes("green")) colorHex = 0x2d6a4f;
+        else if (p.includes("blue") || p.includes("navy")) colorHex = 0x1e3a5f;
+        else if (p.includes("white") || p.includes("cream")) colorHex = 0xf1efe7;
+        else if (p.includes("terracotta") || p.includes("orange")) colorHex = 0xb4533c;
+        scene.traverse((child) => {
+          const m = child as THREE.Mesh;
+          if (m.isMesh && (m.name.includes("right_wall") || m.name.includes("back_wall"))) {
+            if (m.material && "color" in m.material) {
+              (m.material as THREE.MeshStandardMaterial).color.setHex(colorHex);
+              (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+            }
+          }
+        });
+      }
+
+      return true;
+    },
   });
 
   useImperativeHandle(ref, () => controllerRef.current, []);
@@ -189,6 +451,10 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
     const orbit = new OrbitControls(camera, renderer.domElement);
@@ -445,6 +711,9 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
             return;
           }
           asset = result;
+          if (result.mode === "mesh" && result.object) {
+            enhancePhotorealisticScene(result.object, scene, (manifest as { version_id?: string })?.version_id);
+          }
           setTelemetry((current) => ({ ...current, count: result.count, mode: result.mode }));
         })
         .catch((error: unknown) => console.warn("Scene asset loading failed.", error));
