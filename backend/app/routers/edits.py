@@ -192,18 +192,20 @@ def _queue_edit_task(session: Session, edit: EditSession, task_type: str, payloa
     return task
 
 
+Image.MAX_IMAGE_PIXELS = 50_000_000
+
 def _validate_binary_mask_png(raw: bytes, expected_size: tuple[int, int] | None) -> bytes:
     if not raw:
         raise HTTPException(status_code=422, detail="Mask PNG upload is empty")
     try:
         with Image.open(BytesIO(raw)) as img:
-            img.load()
             if img.format != "PNG" or img.mode != "L":
                 raise HTTPException(status_code=422, detail=f"Mask must be 1-channel uint8 PNG ('L'), got {img.format}/{img.mode}")
             if img.width < 64 or img.height < 64 or img.width % 16 != 0 or img.height % 16 != 0:
                 raise HTTPException(status_code=422, detail=f"Mask dimensions {img.size} must be >= 64 and divisible by 16")
             if expected_size is not None and img.size != expected_size:
                 raise HTTPException(status_code=422, detail=f"Mask dimensions {img.size} do not match scene {expected_size}")
+            img.load()
             if img.tobytes().translate(None, b"\x00\xff"):
                 raise HTTPException(status_code=422, detail="Mask pixel values must be strictly 0 or 255")
     except (UnidentifiedImageError, OSError) as exc:

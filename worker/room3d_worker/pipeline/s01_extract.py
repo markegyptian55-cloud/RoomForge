@@ -84,12 +84,18 @@ def extract_keyframes(
     records: list[dict[str, object]] = []
     sharpnesses: list[float] = []
     previous_gray: Image | None = None
+    canonical_w: int = 0
+    canonical_h: int = 0
+    max_decode_frames = 10_000
     with av.open(video) as container:
         stream = container.streams.video[0]
         rate = float(stream.average_rate or 0.0)
         for original_index, frame in enumerate(container.decode(video=0)):
+            if original_index >= max_decode_frames:
+                break
             image = frame.to_ndarray(format="bgr24")
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            prepared, width, height = _prepare(image, max_long_side)
+            gray = cv2.cvtColor(prepared, cv2.COLOR_BGR2GRAY)
             score = _sharpness(gray)
             sharpnesses.append(score)
             baseline = float(np.median(sharpnesses[-sharpness_window:]))
@@ -98,7 +104,8 @@ def extract_keyframes(
             motion = 1.0 if previous_gray is None else _parallax(previous_gray, gray)
             if previous_gray is not None and motion < min_parallax_frac:
                 continue
-            prepared, width, height = _prepare(image, max_long_side)
+            if not records:
+                canonical_w, canonical_h = width, height
             frame_index = len(records)
             relative = Path("images") / f"frame_{frame_index:06d}.jpg"
             target = destination / relative
@@ -113,7 +120,7 @@ def extract_keyframes(
             previous_gray = gray
     if not records:
         raise ValueError("No sharp, sufficiently parallax-separated keyframes were found")
-    index: dict[str, object] = {"frames": records, "width": width, "height": height}
+    index: dict[str, object] = {"frames": records, "width": canonical_w, "height": canonical_h}
     fd, temporary = tempfile.mkstemp(prefix="extract_index.", suffix=".json", dir=destination)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:

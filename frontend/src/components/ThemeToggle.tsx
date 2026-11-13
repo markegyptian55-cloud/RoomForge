@@ -14,14 +14,14 @@ function subscribe(callback: () => void): () => void {
 }
 
 function getSnapshot(): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return true;
   const stored = localStorage.getItem("room3d_theme");
   if (stored !== null) return stored === "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return true;
 }
 
 function getServerSnapshot(): boolean {
-  return false;
+  return true;
 }
 
 export function ThemeToggle() {

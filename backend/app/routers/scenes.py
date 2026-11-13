@@ -11,7 +11,7 @@ from ..db import get_db
 from ..models import Project, SceneVersion
 from ..security import get_current_user, get_storage_actor
 from ..storage import get_storage
-from ..storage.base import validate_key
+from ..storage.base import BoundedStream, validate_key
 from .projects import _project
 
 router = APIRouter(tags=["scenes"])
@@ -68,7 +68,10 @@ def storage_upload(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     storage = get_storage(get_settings())
     full_key = f"{project_id}/{safe_version}/{key}"
-    written = storage.put_stream(full_key, file.file)
+    try:
+        written = storage.put_stream(full_key, BoundedStream(file.file, get_settings().max_upload_bytes))
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
     return {"key": full_key, "bytes": written}
 
 

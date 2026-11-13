@@ -250,6 +250,7 @@ def _run_opt_loop(
     frozen = tuple(t[bg_idx].detach() for t in (pts_t, cols_t, op_t, sc_t))
     quats = torch_mod.zeros((len(pts_t), 4), dtype=torch_mod.float32, device=dev)
     quats[:, 0] = 1.0
+    quats = quats.detach()
     ks = _build_k_matrix(manifest, torch_mod, dev)
     opt = torch_mod.optim.Adam(list(active), lr=5e-3)
     steps = request.fine_tune_steps if request.mode == "masked_finetune" else request.from_scratch_steps
@@ -270,6 +271,7 @@ def _run_opt_loop(
             loss = (pred - target).abs().mean()
         loss.backward()
         opt.step()
+        del rendered, pred, target, loss, viewmat
     return roi_idx, bg_idx, active, frozen, torch_mod, quats
 
 
@@ -309,13 +311,15 @@ def _apply_frame_exclusions(frames: list[FrameRecord], skip_frames: set[int]) ->
 def _verify_pose_invariance(base: SceneManifest, rebuilt: SceneManifest) -> float:
     if rebuilt.intrinsics != base.intrinsics or rebuilt.width != base.width or rebuilt.height != base.height:
         raise StageExecutionError("Week 2 rebuild altered canonical camera intrinsics or dimensions")
-    if rebuilt.T_viewer_from_colmap != base.T_viewer_from_colmap:
+    t_rebuilt = np.asarray(rebuilt.T_viewer_from_colmap or np.eye(4), dtype=np.float64)
+    t_base = np.asarray(base.T_viewer_from_colmap or np.eye(4), dtype=np.float64)
+    if not np.allclose(t_rebuilt, t_base, atol=1e-7):
         raise StageExecutionError("Week 2 rebuild altered canonical viewer transform")
     max_drift = max(
         float(np.max(np.abs(np.asarray(r.cam_from_world) - np.asarray(b.cam_from_world))))
         for b, r in zip(base.frames, rebuilt.frames, strict=True)
     )
-    if max_drift != 0.0:
+    if max_drift > 1e-7:
         raise StageExecutionError(f"Week 2 rebuild drifted camera poses: max_drift={max_drift}")
     return max_drift
 

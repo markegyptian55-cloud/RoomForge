@@ -10,6 +10,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from ..models import EditSession, Project, SceneVersion, Task, TaskAttempt
+from ..storage.base import validate_key
 from .progress import compute_progress
 
 MAX_TASK_RETRIES = 3
@@ -251,6 +252,7 @@ def complete_task(session: Session, task_id: str, attempt_id: str, result_payloa
     _check_active_attempt(task, attempt_id)
     result = dict(result_payload)
     if result_manifest_key:
+        result_manifest_key = validate_key(result_manifest_key)
         result["manifest_key"] = result_manifest_key
     task.status, task.progress_pct, task.result_json = "completed", 100.0, json.dumps(result)
     task.active_attempt_id = None

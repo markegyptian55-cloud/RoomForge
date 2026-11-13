@@ -148,7 +148,10 @@ def composite_strict_mask(orig_rgb: RGBImage, edited_rgb: RGBImage, binary_mask:
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * feather_px + 1, 2 * feather_px + 1))
     inner = cv2.erode(binary_mask, kernel, iterations=1) == 255
     alpha = np.where(fg, 0.5, 0.0).astype(np.float32)
-    alpha[inner] = 1.0
+    if not np.any(inner):
+        alpha[fg] = 1.0
+    else:
+        alpha[inner] = 1.0
     blended = np.rint((1.0 - alpha[..., None]) * orig_rgb + alpha[..., None] * edited_rgb).clip(0, 255).astype(np.uint8)
     out[fg] = blended[fg]
     return out
@@ -195,7 +198,10 @@ def _run_padded_inpaint(
 ) -> RGBImage:
     padded_img, padded_mask, (h, w) = pad_to_multiple(orig, mask, multiple=16)
     padded_ref = _pad_rgb_only(image_reference, padded_img.shape[:2]) if image_reference is not None else None
-    raw_out = backend.inpaint(padded_img, padded_mask, prompt, seed=seed, image_reference=padded_ref)[:h, :w]
+    raw_res = backend.inpaint(padded_img, padded_mask, prompt, seed=seed, image_reference=padded_ref)
+    if raw_res.shape[0] < h or raw_res.shape[1] < w:
+        raise StageExecutionError(f"Inpaint backend returned image with invalid shape {raw_res.shape}, expected at least ({h}, {w})")
+    raw_out = raw_res[:h, :w]
     composited = composite_strict_mask(orig, raw_out, mask, feather_px=feather_px)
     assert_unmasked_unchanged(orig, composited, mask)
     return composited

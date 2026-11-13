@@ -39,7 +39,7 @@ export default function HomePage() {
   return (
     <main className="shell">
       <header className="topbar">
-        <Link className="brand" href="/">ROOM<span>3D</span></Link>
+        <Link className="brand" href="/">ROOM<span>FORGE</span></Link>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <ThemeToggle />
           <span className="header-note">PRIVATE WORKSPACE</span>

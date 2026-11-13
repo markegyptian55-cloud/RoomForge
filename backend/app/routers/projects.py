@@ -16,6 +16,7 @@ from ..models import EditSession, Project, SceneVersion, Task
 from ..security import get_current_user
 from ..services.celery_bridge import dispatch_task_if_configured
 from ..storage import get_storage
+from ..storage.base import BoundedStream
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 _EXTENSIONS = {".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm"}
@@ -23,19 +24,6 @@ _EXTENSIONS = {".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/w
 
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-
-
-class BoundedStream:
-    def __init__(self, source: BinaryIO, limit: int) -> None:
-        self.source, self.limit, self.total = source, limit, 0
-
-    def read(self, size: int = -1) -> bytes:
-        remaining = self.limit + 1 - self.total
-        chunk = self.source.read(min(size, remaining) if size >= 0 else remaining)
-        self.total += len(chunk)
-        if self.total > self.limit:
-            raise ValueError("upload exceeds MAX_UPLOAD_BYTES")
-        return chunk
 
 
 def _project(session: Session, project_id: str, user_id: str | None) -> Project:

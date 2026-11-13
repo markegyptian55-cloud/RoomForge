@@ -34,6 +34,8 @@ def filter_floaters(points_xyz: np.ndarray, opacity: np.ndarray, scales: np.ndar
     points = np.asarray(points_xyz, dtype=np.float32)
     alpha = np.asarray(opacity, dtype=np.float32).reshape(-1)
     size = np.asarray(scales, dtype=np.float32)
+    if size.ndim == 1:
+        size = size[:, None]
     if points.ndim != 2 or points.shape[1] != 3 or len(points) != len(alpha) or len(points) != len(size):
         raise ValueError("points, opacity, and scales must have the same Gaussian count")
     finite = np.isfinite(points).all(1) & np.isfinite(alpha) & np.isfinite(size).all(1)

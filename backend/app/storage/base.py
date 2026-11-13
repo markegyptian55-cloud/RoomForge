@@ -22,12 +22,28 @@ class StorageDriver(ABC):
     def safe_resolve(self, key: str) -> Path: ...
 
 
+class BoundedStream:
+    def __init__(self, source: BinaryIO, limit: int) -> None:
+        self.source, self.limit, self.total = source, limit, 0
+
+    def read(self, size: int = -1) -> bytes:
+        remaining = self.limit + 1 - self.total
+        chunk = self.source.read(min(size, remaining) if size >= 0 else remaining)
+        self.total += len(chunk)
+        if self.total > self.limit:
+            raise ValueError("upload exceeds MAX_UPLOAD_BYTES")
+        return chunk
+
+
 def validate_key(key: str) -> str:
     from urllib.parse import unquote
 
     decoded = key
-    for _ in range(3):
-        decoded = unquote(decoded)
+    for _ in range(10):
+        next_decoded = unquote(decoded)
+        if next_decoded == decoded:
+            break
+        decoded = next_decoded
     if not decoded or "\x00" in decoded or decoded.startswith(("/", "\\")):
         raise ValueError("storage key must be relative")
     if len(decoded) >= 2 and decoded[1] == ":":

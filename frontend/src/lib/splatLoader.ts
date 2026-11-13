@@ -112,10 +112,10 @@ async function loadPoints(url: string, group: THREE.Group): Promise<number> {
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   const gaussianMap = createGaussianCircleTexture();
   const material = new THREE.PointsMaterial({
-    size: 0.038,
+    size: 0.048,
     vertexColors: true,
     sizeAttenuation: true,
-    ...(gaussianMap ? { map: gaussianMap, transparent: true, alphaTest: 0.01, depthWrite: true } : {}),
+    ...(gaussianMap ? { map: gaussianMap, transparent: true, alphaTest: 0.015, depthWrite: true } : {}),
   });
   group.add(new THREE.Points(geometry, material));
   return points.length;

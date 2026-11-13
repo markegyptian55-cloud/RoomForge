@@ -24,6 +24,8 @@ export interface EditStudioProps {
   activeVersionId: string | null;
   onSelectVersion: (versionId: string) => void;
   onRefreshProject: () => Promise<void>;
+  editMode?: boolean;
+  onToggleEditMode?: () => void;
 }
 
 const DEFAULT_SEEDS = [101, 202, 303];
@@ -52,8 +54,12 @@ export default function EditStudio({
   activeVersionId,
   onSelectVersion,
   onRefreshProject,
+  editMode: propsEditMode,
+  onToggleEditMode,
 }: EditStudioProps) {
-  const [editMode, setEditMode] = useState(false);
+  const [internalEditMode, setInternalEditMode] = useState(false);
+  const editMode = propsEditMode !== undefined ? propsEditMode : internalEditMode;
+  const toggleEditMode = onToggleEditMode ?? (() => setInternalEditMode((v) => !v));
   const [editId, setEditId] = useState<string | null>(null);
   const [refFrameIdx, setRefFrameIdx] = useState<number>(0);
   const [points, setPoints] = useState<PromptPoint[]>([]);
@@ -190,7 +196,7 @@ export default function EditStudio({
         <button
           type="button"
           aria-pressed={editMode}
-          onClick={() => setEditMode((v) => !v)}
+          onClick={toggleEditMode}
           style={{
             borderColor: editMode ? "#2dd4bf" : "#3b82f6",
             background: editMode ? "#064e3b" : "#1e293b",
@@ -200,9 +206,13 @@ export default function EditStudio({
             padding: "8px 14px",
             borderRadius: "8px",
             borderWidth: "2px",
+            boxShadow: editMode ? "0 0 12px rgba(45, 212, 191, 0.4)" : "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
           }}
         >
-          {editMode ? "🎯 Edit Object Mode: ON (Selection Active)" : "✏️ Edit Object Mode: OFF (Click to Enable)"}
+          {editMode ? "🎯 Edit Object Mode: ON" : "✏️ Edit Object Mode: OFF (Press E)"}
         </button>
       </div>
 

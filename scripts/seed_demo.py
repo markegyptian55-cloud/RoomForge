@@ -136,10 +136,10 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
         ao = np.clip(1.0 - 0.25 * ((np.abs(u) > 2.6) | (np.abs(v) > 2.6)), 0.6, 1.0)[:, None]
         return np.clip(base * ao, 0, 255).astype(np.uint8)
 
-    p, c = _sample_plane("y", 0.0, (-3.0, 3.0), (-3.0, 3.0), 18000, floor_shader)
+    p, c = _sample_plane("y", 0.0, (-3.0, 3.0), (-3.0, 3.0), 45000, floor_shader)
     add_geom(p, c)
 
-    # 2. Ceiling: Warm off-white with recessed downlight halos (8,000 points)
+    # 2. Ceiling: Warm off-white with recessed downlight halos (18,000 points)
     def ceiling_shader(u: np.ndarray, v: np.ndarray) -> np.ndarray:
         base = np.full((len(u), 3), [238, 238, 240], dtype=np.float32)
         for lx, lz in [(-1.2, 0.6), (1.2, 0.6), (-1.2, 2.0), (1.2, 2.0)]:
@@ -148,10 +148,10 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
             base = base + halo * np.array([17, 12, -10], dtype=np.float32)
         return np.clip(base, 0, 255).astype(np.uint8)
 
-    p, c = _sample_plane("y", 2.65, (-3.0, 3.0), (-3.0, 3.0), 8000, ceiling_shader)
+    p, c = _sample_plane("y", 2.65, (-3.0, 3.0), (-3.0, 3.0), 18000, ceiling_shader)
     add_geom(p, c)
 
-    # 3. Back Wall (Z = 3.0): Gallery plaster + dark baseboard (10,000 points)
+    # 3. Back Wall (Z = 3.0): Gallery plaster + dark baseboard (26,000 points)
     def back_wall_shader(u: np.ndarray, v: np.ndarray) -> np.ndarray:
         base = np.full((len(u), 3), [232, 230, 226], dtype=np.float32)
         # Baseboard moulding at bottom
@@ -160,10 +160,10 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
         noise = np.random.normal(0, 3.0, base.shape).astype(np.float32)
         return np.clip(base + noise, 0, 255).astype(np.uint8)
 
-    p, c = _sample_plane("z", 3.0, (-3.0, 3.0), (0.0, 2.65), 10000, back_wall_shader)
+    p, c = _sample_plane("z", 3.0, (-3.0, 3.0), (0.0, 2.65), 26000, back_wall_shader)
     add_geom(p, c)
 
-    # 4. Modern Canvas Abstract Art above Sofa (Z = 2.97, 4,500 points)
+    # 4. Modern Canvas Abstract Art above Sofa (Z = 2.97, 9,000 points)
     def art_canvas_shader(u: np.ndarray, v: np.ndarray) -> np.ndarray:
         # Abstract strokes: azure blue, terracotta, gold, ivory, charcoal
         s1 = np.sin(u * 3.5 + v * 4.0)
@@ -186,10 +186,10 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
         clrs[edge] = [18, 20, 24]
         return np.clip(clrs, 0, 255).astype(np.uint8)
 
-    p, c = _sample_plane("z", 2.97, (-1.6, 0.6), (1.25, 2.35), 4500, art_canvas_shader)
+    p, c = _sample_plane("z", 2.97, (-1.6, 0.6), (1.25, 2.35), 9000, art_canvas_shader)
     add_geom(p, c)
 
-    # 5. Left Wall (X = -3.0): Panoramic glass window to terrace (10,000 points)
+    # 5. Left Wall (X = -3.0): Panoramic glass window to terrace (26,000 points)
     def window_shader(u: np.ndarray, v: np.ndarray) -> np.ndarray:
         # u is Y [0, 2.65], v is Z [-3, 3]
         clrs = np.zeros((len(u), 3), dtype=np.float32)
@@ -208,10 +208,10 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
         clrs[frame] = [28, 30, 35]
         return np.clip(clrs, 0, 255).astype(np.uint8)
 
-    p, c = _sample_plane("x", -3.0, (0.0, 2.65), (-3.0, 3.0), 10000, window_shader)
+    p, c = _sample_plane("x", -3.0, (0.0, 2.65), (-3.0, 3.0), 26000, window_shader)
     add_geom(p, c)
 
-    # 6. Right Wall (X = 3.0): Sage accent wall with brass sconces (8,000 points)
+    # 6. Right Wall (X = 3.0): Sage accent wall with brass sconces (22,000 points)
     def right_wall_shader(u: np.ndarray, v: np.ndarray) -> np.ndarray:
         base = np.full((len(u), 3), [192, 202, 194], dtype=np.float32)
         for sz in [-0.5, 1.5]:
@@ -222,14 +222,14 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
         base = np.where(baseboard, np.array([42, 48, 56], dtype=np.float32), base)
         return np.clip(base, 0, 255).astype(np.uint8)
 
-    p, c = _sample_plane("x", 3.0, (0.0, 2.65), (-3.0, 3.0), 8000, right_wall_shader)
+    p, c = _sample_plane("x", 3.0, (0.0, 2.65), (-3.0, 3.0), 22000, right_wall_shader)
     add_geom(p, c)
 
-    # 7. Front Wall (Z = -3.0): Soft neutral plaster (6,000 points)
-    p, c = _sample_plane("z", -3.0, (-3.0, 3.0), (0.0, 2.65), 6000, lambda u, v: np.full((len(u), 3), [225, 222, 218], dtype=np.uint8))
+    # 7. Front Wall (Z = -3.0): Soft neutral plaster (15,000 points)
+    p, c = _sample_plane("z", -3.0, (-3.0, 3.0), (0.0, 2.65), 15000, lambda u, v: np.full((len(u), 3), [225, 222, 218], dtype=np.uint8))
     add_geom(p, c)
 
-    # 8. Persian Area Rug under Seating (Y = 0.012, 8,000 points)
+    # 8. Persian Area Rug under Seating (Y = 0.012, 24,000 points)
     def rug_shader(u: np.ndarray, v: np.ndarray) -> np.ndarray:
         # Center medallion + ornate border
         dist_c = np.hypot(u - (-0.6), v - 1.25)
@@ -243,47 +243,47 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
         clrs[detail] = [38, 55, 92]
         return np.clip(clrs, 0, 255).astype(np.uint8)
 
-    p, c = _sample_plane("y", 0.012, (-2.15, 0.95), (0.08, 2.45), 8000, rug_shader)
+    p, c = _sample_plane("y", 0.012, (-2.15, 0.95), (0.08, 2.45), 24000, rug_shader)
     add_geom(p, c)
 
-    # 9. Luxury Sectional Sofa (Target Object, ~20,000 points)
+    # 9. Luxury Sectional Sofa (Target Object, ~50,000 points)
     # 9a. Main seat base
-    p, c = _sample_box_surface((-1.8, 0.65), (0.0, 0.44), (1.15, 2.35), 7000, sofa_color)
+    p, c = _sample_box_surface((-1.8, 0.65), (0.0, 0.44), (1.15, 2.35), 18000, sofa_color)
     add_geom(p, c, sofa=True)
     # 9b. Backrest
-    p, c = _sample_box_surface((-1.8, 0.65), (0.44, 0.86), (2.05, 2.38), 5000, sofa_color)
+    p, c = _sample_box_surface((-1.8, 0.65), (0.44, 0.86), (2.05, 2.38), 14000, sofa_color)
     add_geom(p, c, sofa=True)
     # 9c. Left armrest
-    p, c = _sample_box_surface((-1.98, -1.75), (0.0, 0.64), (1.15, 2.38), 2500, sofa_color)
+    p, c = _sample_box_surface((-1.98, -1.75), (0.0, 0.64), (1.15, 2.38), 6000, sofa_color)
     add_geom(p, c, sofa=True)
     # 9d. Chaise lounge extension
-    p, c = _sample_box_surface((0.15, 0.65), (0.0, 0.44), (0.45, 1.15), 3500, sofa_color)
+    p, c = _sample_box_surface((0.15, 0.65), (0.0, 0.44), (0.45, 1.15), 9000, sofa_color)
     add_geom(p, c, sofa=True)
     # 9e. Throw accent pillows (Gold Velvet & Cream)
-    p, c = _sample_box_surface((-1.55, -1.15), (0.44, 0.72), (1.9, 2.08), 1200, [217, 119, 6])
+    p, c = _sample_box_surface((-1.55, -1.15), (0.44, 0.72), (1.9, 2.08), 2500, [217, 119, 6])
     add_geom(p, c, sofa=True)
-    p, c = _sample_box_surface((0.0, 0.38), (0.44, 0.72), (1.9, 2.08), 1200, [217, 119, 6])
+    p, c = _sample_box_surface((0.0, 0.38), (0.44, 0.72), (1.9, 2.08), 2500, [217, 119, 6])
     add_geom(p, c, sofa=True)
 
-    # 10. Live-Edge Walnut Coffee Table + Props (~5,000 points)
+    # 10. Live-Edge Walnut Coffee Table + Props (~12,000 points)
     # Table top
-    p, c = _sample_box_surface((-1.05, 0.05), (0.34, 0.38), (0.35, 0.95), 3000, [112, 74, 42])
+    p, c = _sample_box_surface((-1.05, 0.05), (0.34, 0.38), (0.35, 0.95), 8000, [112, 74, 42])
     add_geom(p, c)
     # 4 Steel Hairpin Legs
     for lx, lz in [(-1.0, 0.4), (-0.02, 0.4), (-1.0, 0.9), (-0.02, 0.9)]:
-        p, c = _sample_box_surface((lx, lx + 0.04), (0.0, 0.34), (lz, lz + 0.04), 300, [30, 32, 36])
+        p, c = _sample_box_surface((lx, lx + 0.04), (0.0, 0.34), (lz, lz + 0.04), 600, [30, 32, 36])
         add_geom(p, c)
     # Tabletop Book
-    p, c = _sample_box_surface((-0.78, -0.45), (0.38, 0.41), (0.48, 0.78), 600, [245, 245, 240])
+    p, c = _sample_box_surface((-0.78, -0.45), (0.38, 0.41), (0.48, 0.78), 1500, [245, 245, 240])
     add_geom(p, c)
     # Ceramic Coffee Mug
-    p, c = _sample_box_surface((-0.22, -0.1), (0.38, 0.48), (0.55, 0.67), 500, [215, 110, 75])
+    p, c = _sample_box_surface((-0.22, -0.1), (0.38, 0.48), (0.55, 0.67), 1200, [215, 110, 75])
     add_geom(p, c)
 
-    # 11. Corner Fiddle Leaf Fig Plant (~4,000 points)
+    # 11. Corner Fiddle Leaf Fig Plant (~15,500 points)
     # Pot
-    pot_u = np.random.uniform(0.0, 0.52, 1200).astype(np.float32)
-    pot_ang = np.random.uniform(0.0, 2.0 * math.pi, 1200).astype(np.float32)
+    pot_u = np.random.uniform(0.0, 0.52, 3500).astype(np.float32)
+    pot_ang = np.random.uniform(0.0, 2.0 * math.pi, 3500).astype(np.float32)
     pot_r = 0.24
     pot_x = -2.4 + pot_r * np.cos(pot_ang)
     pot_z = 2.45 + pot_r * np.sin(pot_ang)
@@ -291,9 +291,9 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
     pot_clrs = np.full((len(pot_pts), 3), [195, 95, 62], dtype=np.uint8)
     add_geom(pot_pts, pot_clrs)
     # Foliage Canopy
-    leaf_u = np.random.uniform(0.52, 1.85, 2800).astype(np.float32)
-    leaf_ang = np.random.uniform(0.0, 2.0 * math.pi, 2800).astype(np.float32)
-    leaf_r = np.random.uniform(0.05, 0.45, 2800).astype(np.float32)
+    leaf_u = np.random.uniform(0.52, 1.85, 12000).astype(np.float32)
+    leaf_ang = np.random.uniform(0.0, 2.0 * math.pi, 12000).astype(np.float32)
+    leaf_r = np.random.uniform(0.05, 0.45, 12000).astype(np.float32)
     leaf_x = -2.4 + leaf_r * np.cos(leaf_ang)
     leaf_z = 2.45 + leaf_r * np.sin(leaf_ang)
     leaf_pts = np.column_stack([leaf_x, leaf_u, leaf_z]).astype(np.float32)
@@ -301,8 +301,8 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
     leaf_clrs = green_shades[np.random.randint(0, len(green_shades), len(leaf_pts))]
     add_geom(leaf_pts, leaf_clrs)
 
-    # 12. Designer Brass Arc Lamp (~1,800 points)
-    lamp_t = np.linspace(0.0, 1.0, 1000, dtype=np.float32)
+    # 12. Designer Brass Arc Lamp (~4,300 points)
+    lamp_t = np.linspace(0.0, 1.0, 2500, dtype=np.float32)
     lamp_x = 1.6 - 0.85 * lamp_t ** 1.8
     lamp_y = lamp_t * 2.15
     lamp_z = 2.1 - 0.75 * lamp_t
@@ -310,7 +310,7 @@ def _build_dense_room(sofa_color: list[int]) -> tuple[np.ndarray, np.ndarray, np
     lamp_clrs = np.full((len(lamp_pts), 3), [215, 175, 95], dtype=np.uint8)
     add_geom(lamp_pts, lamp_clrs)
     # Lampshade
-    p, c = _sample_box_surface((0.65, 0.85), (1.96, 2.14), (1.25, 1.45), 800, [255, 248, 225])
+    p, c = _sample_box_surface((0.65, 0.85), (1.96, 2.14), (1.25, 1.45), 1800, [255, 248, 225])
     add_geom(p, c)
 
     all_pts = np.vstack(pts_list)

@@ -24,6 +24,8 @@ export interface Viewer3DProps {
   assetBaseUrl?: string;
   onControllerReady?: (controller: ViewerController) => void;
   onVersionChange?: (versionId: string) => void;
+  isEditMode?: boolean;
+  onToggleEditMode?: () => void;
 }
 
 type Mode = "orbit" | "walk";
@@ -66,7 +68,7 @@ function poseCamera(
 }
 
 const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
-  { manifest, assetBaseUrl = "", onControllerReady, onVersionChange },
+  { manifest, assetBaseUrl = "", onControllerReady, onVersionChange, isEditMode = false, onToggleEditMode },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -80,6 +82,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
 
   const [mode, setMode] = useState<Mode>("orbit");
   const [collision, setCollision] = useState(false);
+  const [hintMessage, setHintMessage] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState({
     fps: 0,
     count: 0,
@@ -88,6 +91,11 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
 
   const modeRef = useRef<Mode>(mode);
   const initialCollisionRef = useRef<boolean>(collision);
+  const isEditModeRef = useRef(isEditMode);
+  isEditModeRef.current = isEditMode;
+  const onToggleEditModeRef = useRef(onToggleEditMode);
+  onToggleEditModeRef.current = onToggleEditMode;
+
   modeRef.current = mode;
   initialCollisionRef.current = collision;
   transformRef.current = flattenMatrix(manifest?.T_viewer_from_colmap);
@@ -195,10 +203,16 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
 
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
-        if (modeRef.current === "walk") {
+      if (key === "e" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        const target = event.target as HTMLElement | null;
+        if (target?.tagName !== "INPUT" && target?.tagName !== "TEXTAREA" && target?.tagName !== "SELECT") {
           event.preventDefault();
+          onToggleEditModeRef.current?.();
+          return;
         }
+      }
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
+        event.preventDefault();
       }
       keys.add(key);
     };
@@ -216,7 +230,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     };
 
     const onPointerMove = (event: PointerEvent) => {
-      if (Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY) > 5) {
+      if (Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY) > 12) {
         pointerDragging = true;
       }
       if (modeRef.current !== "walk" || !walkLookActive) return;
@@ -243,6 +257,34 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       raycaster.params.Points = { threshold: 0.35 };
       raycaster.setFromCamera(ndc, camera);
       const hit = raycaster.intersectObjects(scene.children, true).find((item) => item.object !== light);
+
+      if (hit) {
+        const markerGeo = new THREE.SphereGeometry(0.045, 16, 16);
+        const markerMat = new THREE.MeshBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.95 });
+        const marker = new THREE.Mesh(markerGeo, markerMat);
+        marker.position.copy(hit.point);
+        scene.add(marker);
+        const startTime = performance.now();
+        const fadeMarker = () => {
+          const elapsed = performance.now() - startTime;
+          if (elapsed > 600) {
+            scene.remove(marker);
+            markerGeo.dispose();
+            markerMat.dispose();
+          } else {
+            const t = elapsed / 600;
+            marker.scale.setScalar(1 + t * 1.6);
+            markerMat.opacity = 0.95 * (1 - t);
+            requestAnimationFrame(fadeMarker);
+          }
+        };
+        requestAnimationFrame(fadeMarker);
+      }
+
+      if (!isEditModeRef.current) {
+        setHintMessage("💡 Object Selection: Click 'Edit Object Mode: OFF' in the sidebar (or press E) to select objects for editing.");
+        setTimeout(() => setHintMessage(null), 4500);
+      }
 
       const inverse = invertRigid4x4(transformRef.current);
       const origin = applyMatrix4RowMajor(inverse, raycaster.ray.origin.toArray());
@@ -285,6 +327,41 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         }
       } else {
         orbit.enabled = true;
+        const panSpeed = 0.035;
+        if (
+          keys.has("arrowleft") ||
+          keys.has("arrowright") ||
+          keys.has("arrowup") ||
+          keys.has("arrowdown") ||
+          keys.has("a") ||
+          keys.has("d") ||
+          keys.has("w") ||
+          keys.has("s")
+        ) {
+          const offset = new THREE.Vector3().subVectors(camera.position, orbit.target);
+          const radius = offset.length();
+          let theta = Math.atan2(offset.x, offset.z);
+          let phi = Math.acos(Math.max(-1, Math.min(1, offset.y / Math.max(radius, 0.001))));
+
+          if (keys.has("arrowleft") || keys.has("a")) {
+            theta -= panSpeed;
+          }
+          if (keys.has("arrowright") || keys.has("d")) {
+            theta += panSpeed;
+          }
+          if (keys.has("arrowup") || keys.has("w")) {
+            phi = Math.max(0.08, phi - panSpeed);
+          }
+          if (keys.has("arrowdown") || keys.has("s")) {
+            phi = Math.min(Math.PI - 0.08, phi + panSpeed);
+          }
+
+          offset.x = radius * Math.sin(phi) * Math.sin(theta);
+          offset.y = radius * Math.cos(phi);
+          offset.z = radius * Math.sin(phi) * Math.cos(theta);
+          camera.position.copy(orbit.target).add(offset);
+          camera.lookAt(orbit.target);
+        }
         orbit.update();
       }
 
@@ -371,7 +448,34 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   };
 
   return (
-    <div className="viewer3d" ref={hostRef}>
+    <div
+      className="viewer3d"
+      ref={hostRef}
+      style={{ cursor: isEditMode ? "crosshair" : "grab" }}
+    >
+      {hintMessage ? (
+        <div
+          role="status"
+          style={{
+            position: "absolute",
+            top: "16px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#0f172ae6",
+            border: "1px solid #38bdf8",
+            borderRadius: "10px",
+            padding: "9px 18px",
+            color: "#38bdf8",
+            fontSize: "13px",
+            fontWeight: 600,
+            zIndex: 10,
+            boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+            pointerEvents: "none",
+          }}
+        >
+          {hintMessage}
+        </div>
+      ) : null}
       <div className="viewer-hud">
         <div className="viewer-modes">
           <button
@@ -395,6 +499,9 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         <button onClick={reset} type="button">
           Reset Camera
         </button>
+        <span style={{ fontSize: "11px", color: "var(--muted)", marginRight: "8px" }}>
+          🎮 {mode === "walk" ? "WASD / Arrows to Walk · Shift: Sprint · Drag: Look" : "Arrows: Orbit / Pan · Drag: Rotate · Scroll: Zoom"}
+        </span>
         <span>
           {telemetry.fps} FPS · {telemetry.count.toLocaleString()}{" "}
           {telemetry.mode === "points" ? "points" : "splats"}

@@ -61,8 +61,14 @@ class ReidEncoder(Protocol):
         ...
 
 
-def normalize_binary_mask(raw_mask: NDArray[Any], expected_hw: tuple[int, int]) -> MaskArray:
+def normalize_binary_mask(raw_mask: Any, expected_hw: tuple[int, int]) -> MaskArray:
     """Convert bool/float/logits/uint8 mask outputs into strict 1-channel uint8 {0, 255}."""
+    if hasattr(raw_mask, "detach") and callable(raw_mask.detach):
+        raw_mask = raw_mask.detach()
+    if hasattr(raw_mask, "cpu") and callable(raw_mask.cpu):
+        raw_mask = raw_mask.cpu()
+    if hasattr(raw_mask, "numpy") and callable(raw_mask.numpy):
+        raw_mask = raw_mask.numpy()
     arr = np.squeeze(np.asarray(raw_mask))
     if arr.shape != expected_hw:
         raise StageExecutionError(f"Mask shape {arr.shape} does not match expected {expected_hw}")

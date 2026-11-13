@@ -14,6 +14,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [versionManifest, setVersionManifest] = useState<{ versionId: string; data: Manifest } | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [controller, setController] = useState<ViewerController | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     <main className="studio-shell">
       <header className="studio-topbar">
         <div className="studio-topbar-left">
-          <Link className="brand" href="/">ROOM<span>3D</span></Link>
+          <Link className="brand" href="/">ROOM<span>FORGE</span></Link>
           <span className="studio-divider">/</span>
           <h1 className="studio-project-title">{project?.name ?? "Loading scene…"}</h1>
           <span className="version-pill">{project?.active_version_id ? "ACTIVE VERSION" : "BASE BUILD"}</span>
@@ -100,6 +101,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 onControllerReady={setController}
                 onVersionChange={setSelectedVersionId}
                 assetBaseUrl={activeAssetBaseUrl}
+                isEditMode={isEditMode}
+                onToggleEditMode={() => setIsEditMode((v) => !v)}
               />
             </div>
             <aside className="studio-sidebar">
@@ -128,6 +131,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   assetBaseUrl={activeAssetBaseUrl}
                   activeVersionId={displayVersionId}
                   onSelectVersion={setSelectedVersionId}
+                  editMode={isEditMode}
+                  onToggleEditMode={() => setIsEditMode((v) => !v)}
                   onRefreshProject={async () => {
                     const updated = await roomApi.getProject(projectId);
                     setProject(updated);
