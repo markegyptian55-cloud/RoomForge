@@ -61,7 +61,14 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
         if (!cancelled) setVersionManifest({ versionId: displayVersionId, data });
       })
       .catch(() => {
-        if (!cancelled) setVersionManifest(null);
+        if (!cancelled) {
+          const fallback = project?.versions?.[0]?.id;
+          if (fallback && fallback !== displayVersionId) {
+            setSelectedVersionId(fallback);
+          } else {
+            setVersionManifest(null);
+          }
+        }
       });
     return () => {
       cancelled = true;
@@ -75,7 +82,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
       ? `/api/storage/${encodeURIComponent(projectId)}/${encodeURIComponent(displayVersionId)}`
       : "";
 
-  const task: TaskSummary | undefined = project?.tasks[0];
+  const task: TaskSummary | undefined =
+    project?.tasks.find((t) => t.type === "reconstruct") || project?.tasks[0];
   const terminal = task?.status === "completed" || task?.status === "failed" || task?.status === "cancelled";
 
   useEffect(() => {

@@ -111,7 +111,7 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
       const mesh = child as THREE.Mesh;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      const name = (mesh.name || (mesh.userData?.name as string | undefined) || "").toLowerCase();
+      const name = `${mesh.name} ${mesh.geometry?.name || ""} ${(mesh.userData?.name as string | undefined) || ""}`.toLowerCase();
 
       if (name.includes("floor")) {
         mesh.material = new THREE.MeshStandardMaterial({

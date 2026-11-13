@@ -513,6 +513,7 @@ def quick_edit(
         id=version_id,
         project_id=project.id,
         label=label,
+        manifest_relpath=f"{project.id}/{version_id}/manifest.json",
         parent_version_id=base_version_id,
     )
     session.add(new_version)
