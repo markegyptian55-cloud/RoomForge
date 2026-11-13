@@ -92,8 +92,17 @@ def export_scene(request: ExportRequest, points_xyz: np.ndarray, opacity: np.nda
     _write_spz(out / "scene.spz", points, rgb, alpha)
     if (out / "scene.spz").stat().st_size >= request.max_spz_bytes:
         warnings.warn("scene.spz exceeds the 30 MB viewer budget", RuntimeWarning, stacklevel=2)
-    sparse = [{"position": [float(v) for v in point], "color": [int(v) for v in color]}
-              for point, color in zip(points[:: max(1, len(points) // 100_000)], rgb[:: max(1, len(points) // 100_000)])]
+    step = max(1, len(points) // 100_000)
+    sparse = [
+        {
+            "position": [float(v) for v in pt],
+            "x": float(pt[0]),
+            "y": float(pt[1]),
+            "z": float(pt[2]),
+            "color": [int(v) for v in clr],
+        }
+        for pt, clr in zip(points[::step], rgb[::step])
+    ]
     (out / "sparse_points.json").write_text(json.dumps(sparse, separators=(",", ":")) + "\n", encoding="utf-8")
     intrinsic = request.intrinsics or {"fx": 500.0, "fy": 500.0, "cx": request.width / 2, "cy": request.height / 2}
     manifest = SceneManifest.model_validate({"schema_version": "1.0.0", "project_id": request.project_id,

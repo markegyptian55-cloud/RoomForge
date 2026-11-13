@@ -35,7 +35,7 @@ const IDENTITY_MATRIX: number[] = [
   0, 0, 0, 1,
 ];
 
-const DEFAULT_EYE: [number, number, number] = [2, 1.6, 3];
+const DEFAULT_EYE: [number, number, number] = [0.5, 2.0, 4.5];
 const DEFAULT_TARGET: [number, number, number] = [0, 0.8, 0];
 
 function flattenMatrix(input?: number[][]): number[] {
@@ -149,7 +149,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     if (!host) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#dce9df");
+    scene.background = new THREE.Color("#0c111d");
     const light = new THREE.HemisphereLight(0xffffff, 0x55705f, 2);
     scene.add(light);
 

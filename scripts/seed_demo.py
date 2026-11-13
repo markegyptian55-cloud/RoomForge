@@ -133,7 +133,7 @@ def _seed_version(
             intrinsics={"fx": 280.0, "fy": 280.0, "cx": 160.0, "cy": 120.0},
             T_viewer_from_colmap=np.eye(4).tolist(), pose_backend="colmap_global",
         ),
-        pts, opacity, scales,
+        pts, opacity, scales, colors=colors,
     )
     save_gaussian_state(version_dir, GaussianState(pts, colors, opacity, scales))
     return version_dir

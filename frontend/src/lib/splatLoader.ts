@@ -24,7 +24,13 @@ export interface SplatLoadResult {
   collision: THREE.Object3D | null;
 }
 
-type PointRecord = { x: number; y: number; z: number; color?: [number, number, number] };
+type PointRecord = {
+  x?: number;
+  y?: number;
+  z?: number;
+  position?: readonly number[];
+  color?: [number, number, number];
+};
 
 const joinUrl = (base: string, path: string): string => {
   if (/^https?:\/\//i.test(path) || path.startsWith("/") || !base) {
@@ -50,7 +56,11 @@ async function loadPoints(url: string, group: THREE.Group): Promise<number> {
   const positions = new Float32Array(points.length * 3);
   const colors = new Float32Array(points.length * 3);
   points.forEach((point, index) => {
-    positions.set([point.x, point.y, point.z], index * 3);
+    const pos = point.position;
+    const px = pos ? pos[0]! : point.x ?? 0;
+    const py = pos ? pos[1]! : point.y ?? 0;
+    const pz = pos ? pos[2]! : point.z ?? 0;
+    positions.set([px, py, pz], index * 3);
     const rawColor = point.color ?? [0.58, 0.82, 0.67];
     colors.set(
       rawColor.map((value) => (value > 1 ? value / 255 : value)),
@@ -61,7 +71,7 @@ async function loadPoints(url: string, group: THREE.Group): Promise<number> {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  const material = new THREE.PointsMaterial({ size: 0.035, vertexColors: true, sizeAttenuation: true });
+  const material = new THREE.PointsMaterial({ size: 0.055, vertexColors: true, sizeAttenuation: true });
   group.add(new THREE.Points(geometry, material));
   return points.length;
 }
