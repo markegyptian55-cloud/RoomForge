@@ -256,32 +256,10 @@ export default function EditStudio({
 
       {editId ? (
         <div style={{ display: "grid", gap: "14px" }}>
-          <ObjectSelector
-            editId={editId}
-            refFrameIdx={refFrameIdx}
-            points={points}
-            imageUrl={refImageUrl}
-            imageWidth={width}
-            imageHeight={height}
-            busy={busy}
-            onAddPoint={handleAddPoint}
-            onConfirmTrack={handleTrack}
-          />
-
-          {framesData ? (
-            <TrackingGrid
-              assetBaseUrl={assetBaseUrl}
-              framesData={framesData}
-              busy={busy}
-              onPageChange={(page) => runAction(() => loadFrames(editId, page))}
-              onToggleSkip={handleToggleSkip}
-              onUploadMask={handleUploadMask}
-            />
-          ) : null}
-
-          <div style={{ display: "grid", gap: "10px", borderTop: "1px solid #334155", paddingTop: "10px" }}>
+          {/* Primary Generative Controls */}
+          <div style={{ display: "grid", gap: "10px", background: "rgba(15, 23, 42, 0.6)", padding: "12px", borderRadius: "10px", border: "1px solid #1e293b" }}>
             <label style={{ display: "grid", gap: "4px" }}>
-              <span>Edit Prompt</span>
+              <span style={{ fontWeight: 600, fontSize: "13px" }}>Edit Instruction Prompt</span>
               <input
                 type="text"
                 aria-label="Edit instruction prompt"
@@ -293,8 +271,8 @@ export default function EditStudio({
             </label>
 
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-              <label>
-                Model:
+              <label style={{ display: "grid", gap: "2px", fontSize: "12px", flex: 1, minWidth: "160px" }}>
+                <span>AI Model:</span>
                 <select
                   aria-label="Diffusion Model Variant"
                   value={modelVariant}
@@ -305,37 +283,88 @@ export default function EditStudio({
                 </select>
               </label>
 
-              <label>
-                Seed:
+              <label style={{ display: "grid", gap: "2px", fontSize: "12px" }}>
+                <span>Seed:</span>
                 <select aria-label="Chosen Diffusion Seed" value={chosenSeed} onChange={(e) => setChosenSeed(e.target.value)}>
                   {DEFAULT_SEEDS.map((s) => (
                     <option key={s} value={`seed_${s}`}>{`seed_${s}`}</option>
                   ))}
                 </select>
               </label>
-
-              <label>
-                Rebuild Mode:
-                <select
-                  aria-label="Rebuild Mode"
-                  value={rebuildMode}
-                  onChange={(e) => setRebuildMode(e.target.value as RebuildMode)}
-                >
-                  <option value="masked_finetune">Masked Fine-Tune (5k steps)</option>
-                  <option value="from_scratch">From Scratch Ablation (15k steps)</option>
-                </select>
-              </label>
             </div>
 
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <button type="button" disabled={busy} onClick={() => void handlePreviewSeeds()}>
-                Generate Seed Previews
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "4px" }}>
+              <button
+                type="button"
+                className="button primary"
+                disabled={busy}
+                onClick={() => void handleApplyRebuild()}
+                style={{ flex: 1, justifyContent: "center" }}
+              >
+                ✨ Apply &amp; Rebuild 3D Room
               </button>
-              <button type="button" disabled={busy} onClick={() => void handleApplyRebuild()}>
-                Apply &amp; Rebuild 3D Room
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void handlePreviewSeeds()}
+                style={{ fontSize: "12px", padding: "6px 10px" }}
+              >
+                Preview Seeds
               </button>
             </div>
           </div>
+
+          {/* Advanced Frame & Mask Inspection Collapsible Accordion */}
+          <details
+            style={{
+              background: "#090d16",
+              border: "1px solid #1e293b",
+              borderRadius: "8px",
+              padding: "10px",
+            }}
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: "12px", color: "#94a3b8" }}>
+              🛠️ Advanced Frame Tracking &amp; Segmentation Masks ({framesData?.frames.length ?? 0} frames)
+            </summary>
+            <div style={{ maxHeight: "360px", overflowY: "auto", marginTop: "10px", display: "grid", gap: "12px" }}>
+              <ObjectSelector
+                editId={editId}
+                refFrameIdx={refFrameIdx}
+                points={points}
+                imageUrl={refImageUrl}
+                imageWidth={width}
+                imageHeight={height}
+                busy={busy}
+                onAddPoint={handleAddPoint}
+                onConfirmTrack={handleTrack}
+              />
+
+              {framesData ? (
+                <TrackingGrid
+                  assetBaseUrl={assetBaseUrl}
+                  framesData={framesData}
+                  busy={busy}
+                  onPageChange={(page) => runAction(() => loadFrames(editId, page))}
+                  onToggleSkip={handleToggleSkip}
+                  onUploadMask={handleUploadMask}
+                />
+              ) : null}
+
+              <div style={{ borderTop: "1px solid #1e293b", paddingTop: "8px" }}>
+                <label style={{ display: "grid", gap: "4px", fontSize: "12px" }}>
+                  <span>Rebuild Mode (Ablation):</span>
+                  <select
+                    aria-label="Rebuild Mode"
+                    value={rebuildMode}
+                    onChange={(e) => setRebuildMode(e.target.value as RebuildMode)}
+                  >
+                    <option value="masked_finetune">Masked Fine-Tune (5k steps)</option>
+                    <option value="from_scratch">From Scratch Ablation (15k steps)</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </details>
         </div>
       ) : null}
     </section>

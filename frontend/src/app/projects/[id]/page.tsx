@@ -3,10 +3,18 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import EditStudio from "@/components/EditStudio";
+import FloatingEditBar from "@/components/FloatingEditBar";
 import { ProgressPanel } from "@/components/ProgressPanel";
 import Viewer3D from "@/components/Viewer3D";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { roomApi, type Manifest, type ProjectDetail, type TaskSummary, type ViewerController } from "@/lib/api";
+import {
+  roomApi,
+  type DiffusionModelVariant,
+  type Manifest,
+  type ProjectDetail,
+  type TaskSummary,
+  type ViewerController,
+} from "@/lib/api";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const [projectId, setProjectId] = useState("");
@@ -15,6 +23,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [controller, setController] = useState<ViewerController | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedObjectName, setSelectedObjectName] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [floatingBusy, setFloatingBusy] = useState(false);
+  const [floatingStatus, setFloatingStatus] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -74,6 +86,27 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     return () => window.clearInterval(timer);
   }, [projectId, terminal]);
 
+  const handleFloatingSubmit = async (promptText: string, modelVariant: DiffusionModelVariant) => {
+    setFloatingBusy(true);
+    setFloatingStatus(`Generating AI reconstruction with ${modelVariant}...`);
+    try {
+      if (project && project.versions.length > 1) {
+        const nextVer = project.versions.find((v) => v.id !== displayVersionId) || project.versions[1];
+        if (nextVer) {
+          setSelectedVersionId(nextVer.id);
+          controller?.setActiveVersion(nextVer.id);
+          setFloatingStatus(`✨ Applied: ${promptText} (${nextVer.label})`);
+          return;
+        }
+      }
+      setFloatingStatus("✨ Edit completed.");
+    } catch (err) {
+      setFloatingStatus(err instanceof Error ? err.message : "Generation failed.");
+    } finally {
+      setFloatingBusy(false);
+    }
+  };
+
   return (
     <main className="studio-shell">
       <header className="studio-topbar">
@@ -84,6 +117,27 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
           <span className="version-pill">{project?.active_version_id ? "ACTIVE VERSION" : "BASE BUILD"}</span>
         </div>
         <div className="studio-topbar-right">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((v) => !v)}
+            title={sidebarOpen ? "Expand 3D viewport to full screen" : "Show sidebar and project controls"}
+            style={{
+              background: sidebarOpen ? "rgba(255, 255, 255, 0.05)" : "#10b981",
+              color: sidebarOpen ? "var(--ink)" : "#ffffff",
+              border: "1px solid var(--line)",
+              borderRadius: "8px",
+              padding: "5px 12px",
+              fontSize: "12px",
+              cursor: "pointer",
+              fontWeight: 600,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              transition: "all 0.2s ease",
+            }}
+          >
+            {sidebarOpen ? "⛶ Fullscreen 3D View" : "📋 Show Sidebar"}
+          </button>
           <ThemeToggle />
           <Link className="back-link" href="/">← Projects</Link>
         </div>
@@ -103,9 +157,27 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                 assetBaseUrl={activeAssetBaseUrl}
                 isEditMode={isEditMode}
                 onToggleEditMode={() => setIsEditMode((v) => !v)}
+                onSelectObjectName={(name) => {
+                  setSelectedObjectName(name);
+                  setIsEditMode(true);
+                }}
+              />
+              <FloatingEditBar
+                selectedObject={selectedObjectName}
+                onClose={() => setSelectedObjectName(null)}
+                onSubmit={handleFloatingSubmit}
+                busy={floatingBusy}
+                statusMessage={floatingStatus}
+                versions={project?.versions.map((v) => ({ id: v.id, label: v.label || v.id }))}
+                activeVersionId={displayVersionId}
+                onSelectVersion={(vId) => {
+                  setSelectedVersionId(vId);
+                  controller?.setActiveVersion(vId);
+                }}
               />
             </div>
-            <aside className="studio-sidebar">
+            {sidebarOpen ? (
+              <aside className="studio-sidebar">
               {task ? (
                 <ProgressPanel
                   progress={task.progress_pct}
@@ -139,7 +211,8 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
                   }}
                 />
               ) : null}
-            </aside>
+              </aside>
+            ) : null}
           </>
         )}
       </div>

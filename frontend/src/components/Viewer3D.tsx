@@ -26,6 +26,7 @@ export interface Viewer3DProps {
   onVersionChange?: (versionId: string) => void;
   isEditMode?: boolean;
   onToggleEditMode?: () => void;
+  onSelectObjectName?: (name: string) => void;
 }
 
 type Mode = "orbit" | "walk";
@@ -68,7 +69,15 @@ function poseCamera(
 }
 
 const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
-  { manifest, assetBaseUrl = "", onControllerReady, onVersionChange, isEditMode = false, onToggleEditMode },
+  {
+    manifest,
+    assetBaseUrl = "",
+    onControllerReady,
+    onVersionChange,
+    isEditMode = false,
+    onToggleEditMode,
+    onSelectObjectName,
+  },
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -78,6 +87,8 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   const transformRef = useRef<number[]>(flattenMatrix(manifest?.T_viewer_from_colmap));
   const handlersRef = useRef(new Set<(event: ViewerClickEvent) => void>());
   const versionCallbackRef = useRef(onVersionChange);
+  const onSelectObjectNameRef = useRef(onSelectObjectName);
+  onSelectObjectNameRef.current = onSelectObjectName;
   const pathRafRef = useRef<number | null>(null);
 
   const [mode, setMode] = useState<Mode>("orbit");
@@ -158,8 +169,17 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#0c111d");
-    const light = new THREE.HemisphereLight(0xffffff, 0x55705f, 2);
-    scene.add(light);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.8);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfffaf0, 2.2);
+    dirLight.position.set(2.5, 4.0, -1.5);
+    scene.add(dirLight);
+
+    const fillLight = new THREE.PointLight(0xffecd2, 1.5, 12);
+    fillLight.position.set(0.0, 2.2, 0.5);
+    scene.add(fillLight);
 
     const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 500);
     // YXZ prevents gimbal roll during WASD + mouse-look walk mode.
@@ -202,21 +222,34 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isInput =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        Boolean(target?.isContentEditable);
+      if (isInput) {
+        return;
+      }
+
       const key = event.key.toLowerCase();
       if (key === "e" && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        const target = event.target as HTMLElement | null;
-        if (target?.tagName !== "INPUT" && target?.tagName !== "TEXTAREA" && target?.tagName !== "SELECT") {
-          event.preventDefault();
-          onToggleEditModeRef.current?.();
-          return;
-        }
+        event.preventDefault();
+        onToggleEditModeRef.current?.();
+        return;
       }
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
         event.preventDefault();
       }
       keys.add(key);
     };
-    const onKeyUp = (event: KeyboardEvent) => keys.delete(event.key.toLowerCase());
+    const onKeyUp = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+        return;
+      }
+      keys.delete(event.key.toLowerCase());
+    };
 
     const onPointerDown = (event: PointerEvent) => {
       pointerDownX = event.clientX;
@@ -256,9 +289,28 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       const raycaster = new THREE.Raycaster();
       raycaster.params.Points = { threshold: 0.35 };
       raycaster.setFromCamera(ndc, camera);
-      const hit = raycaster.intersectObjects(scene.children, true).find((item) => item.object !== light);
+      const hit = raycaster.intersectObjects(scene.children, true).find((item) => !(item.object instanceof THREE.Light));
 
       if (hit) {
+        let name = "Selected Object";
+        let cur: THREE.Object3D | null = hit.object;
+        while (cur && cur !== scene) {
+          const raw = (cur.name || (cur.userData?.name as string | undefined) || "").toLowerCase();
+          if (raw.includes("sofa")) { name = "Luxury Velvet Sofa"; break; }
+          if (raw.includes("coffee_table") || raw.includes("table")) { name = "Walnut Coffee Table"; break; }
+          if (raw.includes("mug")) { name = "Ceramic Coffee Mug"; break; }
+          if (raw.includes("book")) { name = "Art & Design Book"; break; }
+          if (raw.includes("plant") || raw.includes("leaves") || raw.includes("pot")) { name = "Ficus Indoor Plant"; break; }
+          if (raw.includes("lamp")) { name = "Brass Arc Floor Lamp"; break; }
+          if (raw.includes("art") || raw.includes("canvas") || raw.includes("frame")) { name = "Modern Wall Art"; break; }
+          if (raw.includes("rug")) { name = "Area Rug"; break; }
+          if (raw.includes("floor") || raw.includes("parquet")) { name = "Oak Parquet Floor"; break; }
+          if (raw.includes("wall")) { name = "Accent Wall"; break; }
+          if (raw.includes("window")) { name = "Panoramic Window"; break; }
+          cur = cur.parent;
+        }
+        onSelectObjectNameRef.current?.(name);
+
         const markerGeo = new THREE.SphereGeometry(0.045, 16, 16);
         const markerMat = new THREE.MeshBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.95 });
         const marker = new THREE.Mesh(markerGeo, markerMat);
@@ -279,11 +331,6 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           }
         };
         requestAnimationFrame(fadeMarker);
-      }
-
-      if (!isEditModeRef.current) {
-        setHintMessage("💡 Object Selection: Click 'Edit Object Mode: OFF' in the sidebar (or press E) to select objects for editing.");
-        setTimeout(() => setHintMessage(null), 4500);
       }
 
       const inverse = invertRigid4x4(transformRef.current);
@@ -504,7 +551,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         </span>
         <span>
           {telemetry.fps} FPS · {telemetry.count.toLocaleString()}{" "}
-          {telemetry.mode === "points" ? "points" : "splats"}
+          {telemetry.mode === "mesh" ? "polygons" : telemetry.mode === "points" ? "points" : "splats"}
         </span>
       </div>
     </div>

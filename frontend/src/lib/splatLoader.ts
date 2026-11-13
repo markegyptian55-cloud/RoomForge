@@ -3,6 +3,8 @@ import * as THREE from "three";
 export interface SplatManifestArtifacts {
   spz_relpath?: string;
   sog_relpath?: string | null;
+  mesh_glb_relpath?: string | null;
+  scene_glb_relpath?: string | null;
   sparse_points_relpath?: string;
   collision_glb_relpath?: string | null;
 }
@@ -17,7 +19,7 @@ export interface SplatLoadOptions {
 }
 
 export interface SplatLoadResult {
-  mode: "spark" | "points" | "empty";
+  mode: "spark" | "points" | "mesh" | "empty";
   object: THREE.Object3D | null;
   sparkRenderer: THREE.Object3D | null;
   count: number;
@@ -154,6 +156,30 @@ export async function loadSplats(
       scene,
       options.showCollision ?? false,
     );
+  }
+
+  const glbPath = artifacts.scene_glb_relpath ?? artifacts.mesh_glb_relpath;
+  if (glbPath) {
+    try {
+      const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+      const gltf = await new GLTFLoader().loadAsync(joinUrl(base, glbPath));
+      scene.add(gltf.scene);
+      let triCount = 0;
+      gltf.scene.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const m = child as THREE.Mesh;
+          m.castShadow = true;
+          m.receiveShadow = true;
+          if (m.geometry) {
+            const index = m.geometry.index;
+            triCount += index ? index.count / 3 : m.geometry.attributes.position?.count ? m.geometry.attributes.position.count / 3 : 0;
+          }
+        }
+      });
+      return { mode: "mesh", object: gltf.scene, sparkRenderer: null, count: Math.round(triCount), collision };
+    } catch (error) {
+      console.warn("Photorealistic GLB room loading failed, falling back to splat/points.", error);
+    }
   }
 
   const url = artifacts.spz_relpath

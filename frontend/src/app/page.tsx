@@ -57,16 +57,69 @@ export default function HomePage() {
           </button>
         </div>
         <div className="project-grid">
-          {projects.map((project) => (
-            <Link className="project-card" href={`/projects/${project.id}`} key={project.id}>
-              <div className="card-mark">{project.name.slice(0, 1).toUpperCase()}</div>
-              <div>
-                <h2>{project.name}</h2>
-                <p>{project.status}</p>
-              </div>
-              <ArrowUpRight size={18} />
-            </Link>
-          ))}
+          {projects
+            .sort((a, b) => (a.id === "realistic-room" ? -1 : b.id === "realistic-room" ? 1 : 0))
+            .map((project) => {
+              const isRealistic = project.id === "realistic-room";
+              return (
+                <Link
+                  className="project-card"
+                  href={`/projects/${project.id}`}
+                  key={project.id}
+                  style={
+                    isRealistic
+                      ? {
+                          borderColor: "#10b981",
+                          boxShadow: "0 0 20px rgba(16, 185, 129, 0.15)",
+                        }
+                      : undefined
+                  }
+                >
+                  <div
+                    className="card-mark"
+                    style={isRealistic ? { background: "#064e3b", color: "#34d399", border: "1px solid #10b981" } : undefined}
+                  >
+                    {isRealistic ? "3D" : project.name.slice(0, 1).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <h2>{project.name}</h2>
+                      {isRealistic ? (
+                        <span
+                          style={{
+                            background: "rgba(16, 185, 129, 0.2)",
+                            color: "#34d399",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            border: "1px solid #10b981",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          ⭐ REALISTIC 3D MESH
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            background: "rgba(148, 163, 184, 0.15)",
+                            color: "#94a3b8",
+                            fontSize: "10px",
+                            fontWeight: 600,
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                          }}
+                        >
+                          POINT CLOUD
+                        </span>
+                      )}
+                    </div>
+                    <p>{isRealistic ? "Photorealistic solid room with velvet sofa, walnut table, coffee mug & art" : project.status}</p>
+                  </div>
+                  <ArrowUpRight size={18} />
+                </Link>
+              );
+            })}
           {projects.length === 0 && (
             <button className="empty-card" onClick={() => setOpen(true)}>
               <UploadCloud size={24} />
