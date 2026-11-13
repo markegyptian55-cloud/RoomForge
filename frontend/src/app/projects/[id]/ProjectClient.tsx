@@ -262,6 +262,7 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
                   setSelectedObjectName(name);
                   setIsEditMode(true);
                 }}
+                selectedObjectName={selectedObjectName}
               />
               <FloatingEditBar
                 selectedObject={selectedObjectName}

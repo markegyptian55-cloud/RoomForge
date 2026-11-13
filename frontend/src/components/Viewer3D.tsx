@@ -27,6 +27,7 @@ export interface Viewer3DProps {
   isEditMode?: boolean;
   onToggleEditMode?: () => void;
   onSelectObjectName?: (name: string) => void;
+  selectedObjectName?: string | null;
 }
 
 type Mode = "orbit" | "walk";
@@ -261,6 +262,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     isEditMode = false,
     onToggleEditMode,
     onSelectObjectName,
+    selectedObjectName,
   },
   ref,
 ) {
@@ -502,6 +504,10 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     const orbit = new OrbitControls(camera, renderer.domElement);
     orbit.target.set(...DEFAULT_TARGET);
     orbit.enableDamping = true;
+    orbit.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN,
+    };
     orbit.minAzimuthAngle = -Infinity;
     orbit.maxAzimuthAngle = Infinity;
     orbit.minPolarAngle = isMeshRoom ? 0.05 : 0;
@@ -603,30 +609,47 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       const raycaster = new THREE.Raycaster();
       raycaster.params.Points = { threshold: 0.35 };
       raycaster.setFromCamera(ndc, camera);
-      const hit = raycaster.intersectObjects(scene.children, true).find((item) => !(item.object instanceof THREE.Light));
+      const allHits = raycaster.intersectObjects(scene.children, true).filter((item) => !(item.object instanceof THREE.Light));
+
+      // Prioritize small tabletop objects (mug, book, plant, vase, lamp) over general furniture/table/floor
+      const specificHit = allHits.find((item) => {
+        let cur: THREE.Object3D | null = item.object;
+        while (cur && cur !== scene) {
+          const raw = (cur.name || (cur.userData?.name as string | undefined) || "").toLowerCase();
+          if (raw.includes("mug") || raw.includes("cup") || raw.includes("book") || raw.includes("pot") || raw.includes("leaves") || raw.includes("plant") || raw.includes("pillow")) {
+            return true;
+          }
+          cur = cur.parent;
+        }
+        return false;
+      });
+
+      const hit = specificHit || allHits[0];
 
       if (hit) {
         let name = "Selected Object";
         let cur: THREE.Object3D | null = hit.object;
         while (cur && cur !== scene) {
           const raw = (cur.name || (cur.userData?.name as string | undefined) || "").toLowerCase();
-          if (raw.includes("sofa")) { name = "Luxury Velvet Sofa"; break; }
-          if (raw.includes("coffee_table") || raw.includes("table")) { name = "Walnut Coffee Table"; break; }
-          if (raw.includes("mug")) { name = "Ceramic Coffee Mug"; break; }
+          // Specific tabletop objects evaluated FIRST before tables or floors
+          if (raw.includes("coffee_mug") || raw.includes("mug") || raw.includes("cup")) { name = "Ceramic Coffee Mug"; break; }
           if (raw.includes("book")) { name = "Art & Design Book"; break; }
           if (raw.includes("plant") || raw.includes("leaves") || raw.includes("pot")) { name = "Ficus Indoor Plant"; break; }
-          if (raw.includes("lamp")) { name = "Brass Arc Floor Lamp"; break; }
+          if (raw.includes("pillow") || raw.includes("cushion")) { name = "Velvet Accent Pillow"; break; }
+          if (raw.includes("lamp") || raw.includes("shade")) { name = "Brass Arc Floor Lamp"; break; }
+          if (raw.includes("sofa")) { name = "Luxury Velvet Sofa"; break; }
+          if (raw.includes("coffee_table") || raw.includes("table")) { name = "Walnut Coffee Table"; break; }
           if (raw.includes("art") || raw.includes("canvas") || raw.includes("frame")) { name = "Modern Wall Art"; break; }
           if (raw.includes("rug")) { name = "Area Rug"; break; }
-          if (raw.includes("floor") || raw.includes("parquet")) { name = "Oak Parquet Floor"; break; }
-          if (raw.includes("wall")) { name = "Accent Wall"; break; }
           if (raw.includes("window")) { name = "Panoramic Window"; break; }
+          if (raw.includes("wall")) { name = "Accent Wall"; break; }
+          if (raw.includes("floor") || raw.includes("parquet")) { name = "Oak Parquet Floor"; break; }
           cur = cur.parent;
         }
         onSelectObjectNameRef.current?.(name);
 
         const markerGeo = new THREE.SphereGeometry(0.045, 16, 16);
-        const markerMat = new THREE.MeshBasicMaterial({ color: 0x2dd4bf, transparent: true, opacity: 0.95 });
+        const markerMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.95 });
         const marker = new THREE.Mesh(markerGeo, markerMat);
         marker.position.copy(hit.point);
         scene.add(marker);
@@ -819,6 +842,64 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       }
     };
   }, [manifestVersionId, manifestSpz, manifestGlb, manifestPoints, assetBaseUrl]);
+
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    const scene = sceneRef.current;
+    const existing = scene.getObjectByName("object_selection_highlight");
+    if (existing) {
+      scene.remove(existing);
+      if ("geometry" in existing && (existing as THREE.Mesh).geometry) (existing as THREE.Mesh).geometry.dispose();
+      if ("material" in existing && (existing as THREE.Mesh).material) {
+        const mat = (existing as THREE.Mesh).material;
+        if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+        else mat.dispose();
+      }
+    }
+
+    if (!selectedObjectName) return;
+
+    let targetMesh: THREE.Object3D | null = null;
+    const search = selectedObjectName.toLowerCase();
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh && !targetMesh) {
+        const mesh = child as THREE.Mesh;
+        const raw = `${mesh.name} ${mesh.geometry?.name || ""} ${(mesh.userData?.name as string | undefined) || ""}`.toLowerCase();
+        if (search.includes("mug") && (raw.includes("mug") || raw.includes("cup"))) targetMesh = child;
+        else if (search.includes("sofa") && (raw.includes("sofa") || raw.includes("cushion"))) targetMesh = child;
+        else if (search.includes("table") && (raw.includes("table") || raw.includes("coffee_table")) && !raw.includes("mug")) targetMesh = child;
+        else if (search.includes("art") && (raw.includes("canvas") || raw.includes("frame") || raw.includes("art"))) targetMesh = child;
+        else if (search.includes("book") && raw.includes("book")) targetMesh = child;
+        else if (search.includes("lamp") && raw.includes("lamp")) targetMesh = child;
+        else if (search.includes("plant") && (raw.includes("plant") || raw.includes("leaves") || raw.includes("pot"))) targetMesh = child;
+        else if (search.includes("pillow") && raw.includes("pillow")) targetMesh = child;
+        else if (search.includes("wall") && raw.includes("wall")) targetMesh = child;
+      }
+    });
+
+    if (targetMesh) {
+      const box = new THREE.Box3().setFromObject(targetMesh);
+      if (!box.isEmpty()) {
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const boxGeo = new THREE.BoxGeometry(
+          Math.max(0.1, size.x * 1.08),
+          Math.max(0.1, size.y * 1.08),
+          Math.max(0.1, size.z * 1.08)
+        );
+        const boxMat = new THREE.MeshBasicMaterial({
+          color: 0xf59e0b,
+          wireframe: true,
+          transparent: true,
+          opacity: 0.9,
+        });
+        const highlightBox = new THREE.Mesh(boxGeo, boxMat);
+        highlightBox.name = "object_selection_highlight";
+        highlightBox.position.copy(center);
+        scene.add(highlightBox);
+      }
+    }
+  }, [selectedObjectName]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
