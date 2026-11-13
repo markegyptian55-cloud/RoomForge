@@ -47,9 +47,14 @@ export function validateVideo(file: File, maxBytes = 500 * 1024 * 1024): string 
   return null;
 }
 
+const DEFAULT_API_BASE =
+  typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? (process.env.NEXT_PUBLIC_API_URL || "https://cuddly-terms-matter.loca.lt")
+    : "";
+
 export class RoomApi {
   private token: string | null = null;
-  constructor(private readonly baseUrl = "") {}
+  constructor(private readonly baseUrl = DEFAULT_API_BASE) {}
   setToken(token: string | null): void { this.token = token; }
   private path(pathname: string): string { return `${this.baseUrl}${pathname}`; }
   register(email: string, password: string): Promise<{ access_token: string }> { return request(this.path("/api/auth/register"), this.token, { method: "POST", body: JSON.stringify({ email, password }) }); }

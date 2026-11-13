@@ -1,15 +1,13 @@
 import type { NextConfig } from "next";
 
-const backendOrigin = process.env.ROOM3D_BACKEND_URL ?? "http://127.0.0.1:8000";
-
 const nextConfig: NextConfig = {
+  output: "export",
   reactStrictMode: true,
   devIndicators: {
     position: "top-right",
   },
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
-  async rewrites() {
-    return [{ source: "/api/:path*", destination: `${backendOrigin}/api/:path*` }];
+  images: {
+    unoptimized: true,
   },
 };
 
