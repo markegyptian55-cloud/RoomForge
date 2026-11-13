@@ -3,7 +3,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import {
   applyDirection4RowMajor,
   applyMatrix4RowMajor,
@@ -69,7 +68,11 @@ function poseCamera(
   }
 }
 
-function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, versionId?: string, manifest?: any) {
+type SceneEditManifest = SplatManifest & {
+  last_edit?: { prompt?: string; target_object?: string };
+};
+
+function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, versionId?: string, manifest?: SceneEditManifest) {
   const textureLoader = new THREE.TextureLoader();
 
   // Load PBR Textures
@@ -85,17 +88,12 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
   const target = (lastEdit?.target_object || "").toLowerCase();
 
   let artUrl = "/textures/art_modern_abstract.jpg";
-  if (
-    versionId?.toLowerCase().includes("green") ||
-    (target.includes("art") && prompt.includes("green")) ||
-    (target.includes("canvas") && prompt.includes("green")) ||
-    (target.includes("frame") && prompt.includes("green"))
-  ) {
+  const mentionsGreen = prompt.includes("green") || prompt.includes("emerald") || target.includes("green") || target.includes("emerald");
+  const mentionsYellow = prompt.includes("yellow") || prompt.includes("sunflower") || target.includes("yellow") || target.includes("sunflower");
+  if (mentionsGreen || versionId?.toLowerCase().includes("green")) {
     artUrl = "/textures/art_green_emerald.jpg";
   } else if (
-    versionId?.toLowerCase().includes("sunflower") ||
-    versionId?.toLowerCase().includes("yellow") ||
-    (target.includes("art") && (prompt.includes("sunflower") || prompt.includes("yellow")))
+    mentionsYellow || versionId?.toLowerCase().includes("sunflower") || versionId?.toLowerCase().includes("yellow")
   ) {
     artUrl = "/textures/art_sunflowers.jpg";
   }
@@ -114,24 +112,15 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
   }
 
   // Detect sofa color from version or prompt edit
-  let sofaColor = 0x203a5e;
-  if (
-    versionId?.toLowerCase().includes("red") ||
-    versionId?.toLowerCase().includes("v2") ||
-    (target.includes("sofa") && (prompt.includes("red") || prompt.includes("crimson") || prompt.includes("burgundy")))
-  ) {
-    sofaColor = 0x8b1e2c;
-  } else if (target.includes("sofa") && (prompt.includes("green") || prompt.includes("emerald"))) {
-    sofaColor = 0x166548;
-  } else if (target.includes("sofa") && (prompt.includes("black") || prompt.includes("charcoal"))) {
-    sofaColor = 0x18181b;
-  } else if (target.includes("sofa") && (prompt.includes("yellow") || prompt.includes("ochre") || prompt.includes("gold"))) {
-    sofaColor = 0xd49b38;
-  }
+  let sofaColor = 0x254b77;
+  if (prompt.includes("red") || prompt.includes("crimson") || prompt.includes("burgundy")) sofaColor = 0x9e2a3b;
+  else if (mentionsGreen) sofaColor = 0x1b704c;
+  else if (mentionsYellow || prompt.includes("amber") || prompt.includes("ochre")) sofaColor = 0xd97706;
 
   root.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       const mesh = child as THREE.Mesh;
+      mesh.geometry.computeVertexNormals();
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       const name = `${mesh.name} ${mesh.geometry?.name || ""} ${(mesh.userData?.name as string | undefined) || ""}`.toLowerCase();
@@ -155,7 +144,7 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
         });
       } else if (name.includes("frame") || name.includes("art_frame")) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0x18181b,
+          color: mentionsGreen ? 0x166534 : mentionsYellow ? 0xd97706 : 0x1e2430,
           roughness: 0.25,
           metalness: 0.5,
         });
@@ -183,8 +172,9 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
           roughness: 0.35,
         });
       } else if (name.includes("coffee_mug") || name.includes("mug")) {
+        const mugColor = mentionsGreen ? 0x16a34a : mentionsYellow ? 0xeab308 : 0xd66840;
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0xd66840,
+          color: mugColor,
           roughness: 0.12,
           metalness: 0.05,
         });
@@ -242,7 +232,11 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
           roughness: 0.92,
           side: THREE.FrontSide,
         });
-      } else if (name.includes("mullion") || name.includes("window header") || name.includes("window sill") || name.includes("baseboard")) {
+      } else if (name.includes("left_top") || name.includes("left_bottom")) {
+        mesh.material = new THREE.MeshStandardMaterial({ color: 0x22262d, roughness: 0.4, metalness: 0.2 });
+      } else if (name.includes("mullion")) {
+        mesh.material = new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.35, metalness: 0.6 });
+      } else if (name.includes("window header") || name.includes("window sill") || name.includes("baseboard")) {
         mesh.material = new THREE.MeshStandardMaterial({
           color: 0x1e2229,
           roughness: 0.4,
@@ -251,6 +245,8 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
       } else if (name.includes("front_wall") || name.includes("ceiling")) {
         mesh.visible = false;
       }
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      materials.forEach((material) => { material.needsUpdate = true; });
     }
   });
 }
@@ -461,23 +457,24 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    const isMeshRoom = Boolean(manifest?.artifacts?.scene_glb_relpath || manifest?.artifacts?.mesh_glb_relpath);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#181e2b");
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x64748b, 2.0);
-    scene.add(hemiLight);
-
-    const ambLight = new THREE.AmbientLight(0xffffff, 1.4);
-    scene.add(ambLight);
-
-    const dirLight = new THREE.DirectionalLight(0xfffaf0, 2.4);
-    dirLight.position.set(2.5, 4.0, -1.5);
-    scene.add(dirLight);
-
-    const fillLight = new THREE.PointLight(0xffecd2, 1.8, 14);
-    fillLight.position.set(0.0, 2.2, 0.5);
-    scene.add(fillLight);
+    const sunLight = new THREE.DirectionalLight(0xfff7ed, 3.2);
+    sunLight.position.set(-4.0, 3.0, 0.0);
+    sunLight.target.position.set(0.0, 0.6, 0.5);
+    scene.add(sunLight, sunLight.target);
+    const roomFill = new THREE.DirectionalLight(0xe0f2fe, 2.0);
+    roomFill.position.set(3.0, 3.5, -2.0);
+    roomFill.target.position.set(-0.5, 0.6, 0.5);
+    scene.add(roomFill, roomFill.target);
+    const ceilingLight = new THREE.PointLight(0xffedd5, 1.8, 12);
+    ceilingLight.position.set(0.0, 2.3, 0.5);
+    scene.add(ceilingLight);
+    scene.add(new THREE.AmbientLight(0xffffff, 2.4));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 1.8));
 
     const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500);
     // YXZ prevents gimbal roll during WASD + mouse-look walk mode.
@@ -488,26 +485,20 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.3;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
-    // Setup PMREM Room Environment for photorealistic metallic & specular reflections
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const roomEnv = new RoomEnvironment();
-    scene.environment = pmremGenerator.fromScene(roomEnv).texture;
-
     const orbit = new OrbitControls(camera, renderer.domElement);
     orbit.target.set(...DEFAULT_TARGET);
     orbit.enableDamping = true;
-    orbit.minPolarAngle = 0.2;
-    orbit.maxPolarAngle = Math.PI / 2 - 0.05;
-    orbit.minDistance = 1.0;
-    orbit.maxDistance = 4.0;
-    orbit.minAzimuthAngle = -Math.PI * 0.44;
-    orbit.maxAzimuthAngle = Math.PI * 0.44;
+    orbit.minAzimuthAngle = -Infinity;
+    orbit.maxAzimuthAngle = Infinity;
+    orbit.minPolarAngle = isMeshRoom ? 0.05 : 0;
+    orbit.maxPolarAngle = isMeshRoom ? Math.PI / 2 - 0.02 : Math.PI;
+    orbit.minDistance = isMeshRoom ? 0.3 : 0.05;
+    orbit.maxDistance = isMeshRoom ? 7.0 : 500.0;
     orbit.enabled = modeRef.current === "orbit";
 
     sceneRef.current = scene;
@@ -685,9 +676,11 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           input.normalize().multiplyScalar(speed * delta);
           input.applyEuler(new THREE.Euler(0, camera.rotation.y, 0));
           camera.position.add(input);
-          camera.position.x = Math.max(-2.6, Math.min(2.6, camera.position.x));
-          camera.position.z = Math.max(-2.6, Math.min(2.6, camera.position.z));
-          camera.position.y = 1.35;
+        }
+        if (isMeshRoom) {
+          camera.position.x = Math.max(-2.8, Math.min(2.8, camera.position.x));
+          camera.position.z = Math.max(-2.8, Math.min(2.8, camera.position.z));
+          camera.position.y = 1.45;
         }
       } else {
         orbit.enabled = true;
@@ -714,10 +707,10 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
             theta += panSpeed;
           }
           if (keys.has("arrowup") || keys.has("w")) {
-            phi = Math.max(0.08, phi - panSpeed);
+            phi = Math.max(isMeshRoom ? 0.05 : 0, phi - panSpeed);
           }
           if (keys.has("arrowdown") || keys.has("s")) {
-            phi = Math.min(Math.PI / 2 - 0.05, phi + panSpeed);
+            phi = Math.min(isMeshRoom ? Math.PI / 2 - 0.02 : Math.PI, phi + panSpeed);
           }
 
           offset.x = radius * Math.sin(phi) * Math.sin(theta);
