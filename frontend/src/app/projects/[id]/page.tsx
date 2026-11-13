@@ -74,67 +74,67 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
   }, [projectId, terminal]);
 
   return (
-    <main className="shell">
-      <header className="topbar">
-        <Link className="brand" href="/">ROOM<span>3D</span></Link>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+    <main className="studio-shell">
+      <header className="studio-topbar">
+        <div className="studio-topbar-left">
+          <Link className="brand" href="/">ROOM<span>3D</span></Link>
+          <span className="studio-divider">/</span>
+          <h1 className="studio-project-title">{project?.name ?? "Loading scene…"}</h1>
+          <span className="version-pill">{project?.active_version_id ? "ACTIVE VERSION" : "BASE BUILD"}</span>
+        </div>
+        <div className="studio-topbar-right">
           <ThemeToggle />
           <Link className="back-link" href="/">← Projects</Link>
         </div>
       </header>
-      <div className="scene-workspace">
+      <div className="studio-body">
         {error ? (
-          <p className="form-error">{error}</p>
+          <div className="studio-error-container">
+            <p className="form-error">{error}</p>
+          </div>
         ) : (
           <>
-            <div className="scene-heading">
-              <div>
-                <p className="eyebrow">SCENE WORKSPACE</p>
-                <h1>{project?.name ?? "Loading scene…"}</h1>
-              </div>
-              <span className="version-pill">{project?.active_version_id ? "ACTIVE VERSION" : "BASE BUILD"}</span>
-            </div>
-            <div className="scene-grid">
+            <div className="studio-viewport-container">
               <Viewer3D
                 manifest={activeManifest as Parameters<typeof Viewer3D>[0]["manifest"]}
                 onControllerReady={setController}
                 onVersionChange={setSelectedVersionId}
                 assetBaseUrl={activeAssetBaseUrl}
               />
-              <div style={{ display: "grid", gap: "14px" }}>
-                {task ? (
-                  <ProgressPanel
-                    progress={task.progress_pct}
-                    stage={task.stage}
-                    status={task.status}
-                    message={task.message}
-                    telemetry={task.telemetry}
-                    onRetry={() => window.location.reload()}
-                  />
-                ) : (
-                  <ProgressPanel
-                    progress={0}
-                    status="queued"
-                    message="Waiting for the worker to claim this room."
-                  />
-                )}
-                {project ? (
-                  <EditStudio
-                    projectId={projectId}
-                    project={project}
-                    manifest={activeManifest}
-                    controller={controller}
-                    assetBaseUrl={activeAssetBaseUrl}
-                    activeVersionId={displayVersionId}
-                    onSelectVersion={setSelectedVersionId}
-                    onRefreshProject={async () => {
-                      const updated = await roomApi.getProject(projectId);
-                      setProject(updated);
-                    }}
-                  />
-                ) : null}
-              </div>
             </div>
+            <aside className="studio-sidebar">
+              {task ? (
+                <ProgressPanel
+                  progress={task.progress_pct}
+                  stage={task.stage}
+                  status={task.status}
+                  message={task.message}
+                  telemetry={task.telemetry}
+                  onRetry={() => window.location.reload()}
+                />
+              ) : (
+                <ProgressPanel
+                  progress={0}
+                  status="queued"
+                  message="Waiting for the worker to claim this room."
+                />
+              )}
+              {project ? (
+                <EditStudio
+                  projectId={projectId}
+                  project={project}
+                  manifest={activeManifest}
+                  controller={controller}
+                  assetBaseUrl={activeAssetBaseUrl}
+                  activeVersionId={displayVersionId}
+                  onSelectVersion={setSelectedVersionId}
+                  onRefreshProject={async () => {
+                    const updated = await roomApi.getProject(projectId);
+                    setProject(updated);
+                  }}
+                />
+              ) : null}
+            </aside>
           </>
         )}
       </div>

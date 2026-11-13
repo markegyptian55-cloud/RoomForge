@@ -8,7 +8,9 @@
 .scene-grid { display: grid; gap: 20px; grid-template-columns: minmax(0, 1.45fr) minmax(320px, .8fr); } .version-pill { background: #e8f1e8; border-radius: 99px; color: var(--deep); font-family: 'DM Mono', monospace; font-size: 10px; padding: 9px 12px; } .viewer-placeholder { align-items: center; background: #dce9df; border-radius: 20px; display: flex; justify-content: center; min-height: 570px; overflow: hidden; padding: 30px; position: relative; text-align: center; } .viewer-grid { background-image: linear-gradient(#ffffff33 1px, transparent 1px), linear-gradient(90deg, #ffffff33 1px, transparent 1px); background-size: 36px 36px; inset: 0; position: absolute; transform: perspective(500px) rotateX(58deg) scale(1.6); transform-origin: bottom; } .viewer-placeholder > div:last-child { position: relative; } .progress-panel { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px; } .panel-heading { align-items: start; display: flex; justify-content: space-between; } .panel-heading h2 { font-size: 24px; margin-top: 8px; } .panel-heading strong { color: var(--deep); font-size: 23px; } .progress-track { background: #e5ece7; border-radius: 9px; height: 8px; margin: 26px 0; overflow: hidden; } .progress-track span { background: var(--deep); border-radius: inherit; display: block; height: 100%; transition: width .4s; } .stage-list { border-top: 1px solid var(--line); } .stage { align-items: center; border-bottom: 1px solid var(--line); color: #96a19b; display: flex; font-size: 12px; gap: 12px; padding: 11px 0; } .stage.active { color: var(--ink); font-weight: 700; } .stage.complete { color: var(--deep); } .stage-number { align-items: center; display: inline-flex; font-family: 'DM Mono', monospace; font-size: 10px; justify-content: center; width: 18px; } .stage-live { color: #559969; margin-left: auto; } .status-message { align-items: center; background: #f1f7f2; border-radius: 10px; color: var(--deep); display: flex; font-size: 12px; gap: 9px; margin-top: 18px; padding: 12px; } .status-message.error { background: #fff0ef; color: var(--red); } .telemetry { margin-top: 24px; } .telemetry h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; } table { border-collapse: collapse; font-family: 'DM Mono', monospace; font-size: 11px; width: 100%; } th, td { border-bottom: 1px solid var(--line); padding: 9px 0; text-align: left; } td { color: var(--muted); text-align: right; } .retry { margin-top: 18px; width: 100%; }
 .viewer3d { background: #dce9df; border-radius: 20px; min-height: 570px; overflow: hidden; position: relative; } .viewer3d canvas { display: block; height: 100%; width: 100%; } .viewer-hud { align-items: center; background: #f6f8f5e6; border: 1px solid #ffffff99; border-radius: 12px; bottom: 14px; display: flex; flex-wrap: wrap; gap: 7px; left: 14px; padding: 7px; position: absolute; right: 14px; z-index: 1; } .viewer-hud button { background: transparent; border: 1px solid #cbd9cf; border-radius: 8px; color: var(--deep); font-size: 11px; padding: 7px 9px; } .viewer-hud button.active { background: var(--deep); color: #fff; } .viewer-hud span { color: var(--muted); font-family: 'DM Mono', monospace; font-size: 10px; margin-left: auto; } .viewer-modes { display: flex; gap: 4px; }
 html.dark, body.dark, [data-theme="dark"] { --ink: #f1f5f9; --muted: #94a3b8; --line: #263342; --paper: #090d16; --card: #0f172a; --green: #4ade80; --deep: #10b981; --red: #f87171; }
-html.dark .viewer-hud, html.dark .progress-panel, html.dark .glass-card, html.dark .project-card, html.dark .modal { background: #0f172a; border-color: #263342; color: #f1f5f9; }
+html.dark .viewer-hud, html.dark .progress-panel, html.dark .glass-card, html.dark .project-card, html.dark .modal, html.dark .studio-topbar, html.dark .studio-sidebar { background: #0f172a; border-color: #263342; color: #f1f5f9; }
+html.dark .studio-project-title { color: #f1f5f9; }
+html.dark .studio-divider { color: #64748b; }
 html.dark .viewer-hud button { border-color: #334155; color: #94a3b8; }
 html.dark .viewer-hud button.active { background: #10b981; color: #fff; }
 html.dark input[type=text], html.dark select { background: #090d16; color: #f1f5f9; border-color: #334155; }
@@ -16,4 +18,23 @@ html.dark .status-message { background: #132a24; color: #6ee7b7; }
 html.dark .status-message.error { background: #3b1219; color: #fca5a5; }
 html.dark .version-pill { background: #132a24; color: #6ee7b7; }
 html.dark .dropzone { border-color: #334155; color: #94a3b8; }
+/* Modern Full-Viewport 3D Studio Architecture */
+.studio-shell { display: flex; flex-direction: column; height: 100vh; width: 100vw; overflow: hidden; background: var(--paper); }
+.studio-topbar { display: flex; align-items: center; justify-content: space-between; height: 54px; padding: 0 20px; background: var(--card); border-bottom: 1px solid var(--line); flex-shrink: 0; z-index: 10; }
+.studio-topbar-left { display: flex; align-items: center; gap: 12px; }
+.studio-topbar-right { display: flex; align-items: center; gap: 14px; }
+.studio-divider { color: var(--muted); font-weight: 300; opacity: 0.5; }
+.studio-project-title { font-weight: 700; font-size: 15px; letter-spacing: -0.02em; color: var(--ink); margin: 0; line-height: 1.2; }
+.studio-body { display: flex; flex: 1; height: calc(100vh - 54px); width: 100%; overflow: hidden; position: relative; }
+.studio-viewport-container { flex: 1; height: 100%; position: relative; overflow: hidden; background: #0c111d; }
+.studio-viewport-container .viewer3d { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; border-radius: 0; background: #0c111d; }
+.studio-sidebar { width: 440px; height: 100%; flex-shrink: 0; overflow-y: auto; background: var(--card); border-left: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05); }
+.studio-sidebar::-webkit-scrollbar { width: 6px; }
+.studio-sidebar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.studio-error-container { padding: 30px; display: flex; align-items: center; justify-content: center; width: 100%; }
+@media (max-width: 900px) {
+  .studio-body { flex-direction: column; overflow-y: auto; }
+  .studio-viewport-container { height: 55vh; flex: none; }
+  .studio-sidebar { width: 100%; height: auto; border-left: none; border-top: 1px solid var(--line); }
+}
 @media (max-width: 800px) { .workspace, .scene-workspace { padding-top: 48px; } .workspace-head, .scene-heading { align-items: flex-start; flex-direction: column; gap: 24px; } .scene-grid { grid-template-columns: 1fr; } .viewer-placeholder { min-height: 360px; } }

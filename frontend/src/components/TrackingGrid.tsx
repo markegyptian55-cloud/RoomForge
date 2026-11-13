@@ -37,20 +37,54 @@ export default function TrackingGrid({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "8px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+          gap: "8px",
+          maxHeight: "250px",
+          overflowY: "auto",
+          padding: "4px",
+          border: "1px solid var(--line, #334155)",
+          borderRadius: "8px",
+        }}
+      >
         {framesData.frames.map((item) => {
           const thumbSrc = item.image_relpath ? `${assetBaseUrl}/${item.image_relpath}` : null;
           return (
-            <article key={item.frame_idx} style={{ border: "1px solid #334155", borderRadius: "8px", padding: "8px", display: "grid", gap: "6px", background: "#0f172a" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-                <span>Frame {item.frame_idx}</span>
-                <span>{item.mask_status}</span>
+            <article
+              key={item.frame_idx}
+              style={{
+                border: "1px solid var(--line, #334155)",
+                borderRadius: "8px",
+                padding: "8px",
+                display: "grid",
+                gap: "6px",
+                background: "var(--card, #0f172a)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", fontWeight: 600 }}>
+                <span>Frame #{item.frame_idx}</span>
+                <span style={{ color: item.skip_frame ? "var(--red, #f87171)" : "var(--green, #4ade80)" }}>
+                  {item.skip_frame ? "Skipped" : item.mask_status}
+                </span>
               </div>
-              {thumbSrc ? <img src={thumbSrc} alt={`Frame ${item.frame_idx}`} style={{ width: "100%", height: "72px", objectFit: "cover", borderRadius: "4px" }} /> : null}
-              <button type="button" disabled={busy} onClick={() => void onToggleSkip(item.frame_idx, !item.skip_frame)}>
+              {thumbSrc ? (
+                <img
+                  src={thumbSrc}
+                  alt={`Frame ${item.frame_idx}`}
+                  style={{ width: "100%", height: "64px", objectFit: "cover", borderRadius: "4px" }}
+                />
+              ) : null}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onToggleSkip(item.frame_idx, !item.skip_frame)}
+                style={{ fontSize: "11px", padding: "4px 8px" }}
+              >
                 {item.skip_frame ? "Include Frame" : "Skip Frame"}
               </button>
-              <label style={{ fontSize: "11px", cursor: "pointer" }}>
+              <label style={{ fontSize: "10px", cursor: "pointer", textAlign: "center" }}>
                 Upload PNG Mask
                 <input
                   type="file"

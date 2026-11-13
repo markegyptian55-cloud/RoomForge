@@ -42,6 +42,45 @@ const joinUrl = (base: string, path: string): string => {
 const supportsSpark = (renderer: THREE.WebGLRenderer): boolean =>
   Boolean(renderer.capabilities.isWebGL2 && renderer.extensions.has("EXT_color_buffer_float"));
 
+function createGaussianCircleTexture(): THREE.Texture | null {
+  if (typeof document === "undefined") return null;
+  const size = 64;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  const imgData = ctx.createImageData(size, size);
+  const data = imgData.data;
+  const center = (size - 1) / 2;
+  const radius = size / 2;
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = (x - center) / radius;
+      const dy = (y - center) / radius;
+      const d2 = dx * dx + dy * dy;
+      const idx = (y * size + x) * 4;
+      // All RGB channels are strictly 255 to eliminate any dark fringe on bilinear sampling
+      data[idx] = 255;
+      data[idx + 1] = 255;
+      data[idx + 2] = 255;
+      if (d2 <= 1.0) {
+        // Gaussian falloff exp(-d2 * 3.0)
+        const alpha = Math.exp(-d2 * 3.0);
+        data[idx + 3] = Math.round(alpha * 255);
+      } else {
+        data[idx + 3] = 0;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 async function loadPoints(url: string, group: THREE.Group): Promise<number> {
   const response = await fetch(url);
   if (!response.ok) {
@@ -71,7 +110,13 @@ async function loadPoints(url: string, group: THREE.Group): Promise<number> {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  const material = new THREE.PointsMaterial({ size: 0.055, vertexColors: true, sizeAttenuation: true });
+  const gaussianMap = createGaussianCircleTexture();
+  const material = new THREE.PointsMaterial({
+    size: 0.038,
+    vertexColors: true,
+    sizeAttenuation: true,
+    ...(gaussianMap ? { map: gaussianMap, transparent: true, alphaTest: 0.01, depthWrite: true } : {}),
+  });
   group.add(new THREE.Points(geometry, material));
   return points.length;
 }

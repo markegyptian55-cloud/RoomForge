@@ -27,9 +27,9 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: "**/*.spec.ts",
   webServer: {
-    command: `npx next dev -H 127.0.0.1 -p ${port}`,
+    command: `npx next dev -H 127.0.0.1 -p ${port} --dist-dir .next-test`,
     url: baseURL,
-    reuseExistingServer: !process.env.ROOM3D_FRONTEND_PORT,
+    reuseExistingServer: true,
     timeout: 120000,
   },
   use: {

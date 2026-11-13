@@ -35,8 +35,8 @@ const IDENTITY_MATRIX: number[] = [
   0, 0, 0, 1,
 ];
 
-const DEFAULT_EYE: [number, number, number] = [0.5, 2.0, 4.5];
-const DEFAULT_TARGET: [number, number, number] = [0, 0.8, 0];
+const DEFAULT_EYE: [number, number, number] = [0.2, 1.4, -2.0];
+const DEFAULT_TARGET: [number, number, number] = [-0.25, 0.75, 1.6];
 
 function flattenMatrix(input?: number[][]): number[] {
   const flat = input?.flat();
@@ -303,6 +303,8 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     };
 
     resize();
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+    resizeObserver?.observe(host);
     window.addEventListener("resize", resize);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
@@ -333,6 +335,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         cancelAnimationFrame(pathRafRef.current);
         pathRafRef.current = null;
       }
+      resizeObserver?.disconnect();
       window.removeEventListener("resize", resize);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
