@@ -90,6 +90,7 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (!projectId || !displayVersionId) return;
+    if (versionManifest?.versionId === displayVersionId && versionManifest.data) return;
     let cancelled = false;
     void roomApi
       .manifest(projectId, displayVersionId)
@@ -119,7 +120,7 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, displayVersionId, project?.versions]);
+  }, [projectId, displayVersionId]);
 
   const activeManifest =
     displayVersionId && versionManifest?.versionId === displayVersionId ? versionManifest.data : undefined;
@@ -132,15 +133,20 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
 
   const task: TaskSummary | undefined =
     project?.tasks.find((t) => t.type === "reconstruct") || project?.tasks[0];
-  const terminal = task?.status === "completed" || task?.status === "failed" || task?.status === "cancelled";
+
+  const isProjectActive = Boolean(
+    project &&
+      (project.status === "processing" ||
+        project.tasks.some((t) => t.status === "running" || t.status === "claimed"))
+  );
 
   useEffect(() => {
-    if (!projectId || terminal) return;
+    if (!projectId || !isProjectActive) return;
     const timer = window.setInterval(() => {
       void roomApi.getProject(projectId).then(setProject).catch(() => undefined);
     }, 2500);
     return () => window.clearInterval(timer);
-  }, [projectId, terminal]);
+  }, [projectId, isProjectActive]);
 
   const handleFloatingSubmit = async (promptText: string, modelVariant: DiffusionModelVariant) => {
     setFloatingBusy(true);

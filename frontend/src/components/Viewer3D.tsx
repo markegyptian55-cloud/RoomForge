@@ -275,6 +275,14 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   onSelectObjectNameRef.current = onSelectObjectName;
   const pathRafRef = useRef<number | null>(null);
 
+  const manifestRef = useRef(manifest);
+  manifestRef.current = manifest;
+
+  const manifestVersionId = (manifest as { version_id?: string })?.version_id;
+  const manifestSpz = manifest?.artifacts?.spz_relpath;
+  const manifestGlb = manifest?.artifacts?.scene_glb_relpath ?? manifest?.artifacts?.mesh_glb_relpath;
+  const manifestPoints = manifest?.artifacts?.sparse_points_relpath;
+
   const [mode, setMode] = useState<Mode>("orbit");
   const [collision, setCollision] = useState(false);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
@@ -754,8 +762,9 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     renderer.domElement.addEventListener("pointerup", onPointerUp);
     renderer.domElement.addEventListener("click", onClick);
 
-    if (manifest) {
-      void loadSplats(renderer, scene, manifest, { baseUrl: assetBaseUrl, showCollision: initialCollisionRef.current })
+    const activeManifest = manifestRef.current;
+    if (activeManifest) {
+      void loadSplats(renderer, scene, activeManifest, { baseUrl: assetBaseUrl, showCollision: initialCollisionRef.current })
         .then((result) => {
           if (disposed) {
             disposeLoadedSplats(scene, result);
@@ -763,7 +772,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           }
           asset = result;
           if (result.mode === "mesh" && result.object) {
-            enhancePhotorealisticScene(result.object, scene, (manifest as { version_id?: string })?.version_id, manifest);
+            enhancePhotorealisticScene(result.object, scene, (activeManifest as { version_id?: string })?.version_id, activeManifest);
           } else if (result.object) {
             const box = new THREE.Box3().setFromObject(result.object);
             if (!box.isEmpty()) {
@@ -809,7 +818,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         host.removeChild(renderer.domElement);
       }
     };
-  }, [manifest, assetBaseUrl]);
+  }, [manifestVersionId, manifestSpz, manifestGlb, manifestPoints, assetBaseUrl]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
