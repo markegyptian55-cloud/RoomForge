@@ -193,7 +193,15 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       camera.updateProjectionMatrix();
     };
 
-    const onKeyDown = (event: KeyboardEvent) => keys.add(event.key.toLowerCase());
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(key)) {
+        if (modeRef.current === "walk") {
+          event.preventDefault();
+        }
+      }
+      keys.add(key);
+    };
     const onKeyUp = (event: KeyboardEvent) => keys.delete(event.key.toLowerCase());
 
     const onPointerDown = (event: PointerEvent) => {
@@ -232,6 +240,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         -((event.clientY - rect.top) / rect.height) * 2 + 1,
       );
       const raycaster = new THREE.Raycaster();
+      raycaster.params.Points = { threshold: 0.35 };
       raycaster.setFromCamera(ndc, camera);
       const hit = raycaster.intersectObjects(scene.children, true).find((item) => item.object !== light);
 
@@ -260,10 +269,14 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       if (modeRef.current === "walk") {
         orbit.enabled = false;
         const speed = keys.has("shift") ? 3.5 : 1.8;
+        const forward = keys.has("w") || keys.has("arrowup");
+        const backward = keys.has("s") || keys.has("arrowdown");
+        const left = keys.has("a") || keys.has("arrowleft");
+        const right = keys.has("d") || keys.has("arrowright");
         const input = new THREE.Vector3(
-          Number(keys.has("d")) - Number(keys.has("a")),
+          Number(right) - Number(left),
           0,
-          Number(keys.has("s")) - Number(keys.has("w")),
+          Number(backward) - Number(forward),
         );
         if (input.lengthSq() > 0) {
           input.normalize().multiplyScalar(speed * delta);

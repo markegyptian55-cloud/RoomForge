@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import EditStudio from "@/components/EditStudio";
 import { ProgressPanel } from "@/components/ProgressPanel";
 import Viewer3D from "@/components/Viewer3D";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { roomApi, type Manifest, type ProjectDetail, type TaskSummary, type ViewerController } from "@/lib/api";
 
 export default function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
@@ -76,7 +77,10 @@ export default function ProjectPage({ params }: { params: Promise<{ id: string }
     <main className="shell">
       <header className="topbar">
         <Link className="brand" href="/">ROOM<span>3D</span></Link>
-        <Link className="back-link" href="/">← Projects</Link>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <ThemeToggle />
+          <Link className="back-link" href="/">← Projects</Link>
+        </div>
       </header>
       <div className="scene-workspace">
         {error ? (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowUpRight, Plus, UploadCloud } from "lucide-react";
 import { useEffect, useState } from "react";
 import { roomApi, type Project } from "@/lib/api";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function HomePage() {
   const router = useRouter();
@@ -39,7 +40,10 @@ export default function HomePage() {
     <main className="shell">
       <header className="topbar">
         <Link className="brand" href="/">ROOM<span>3D</span></Link>
-        <span className="header-note">PRIVATE WORKSPACE</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <ThemeToggle />
+          <span className="header-note">PRIVATE WORKSPACE</span>
+        </div>
       </header>
       <div className="workspace">
         <div className="workspace-head">

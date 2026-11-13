@@ -191,11 +191,31 @@ export default function EditStudio({
           type="button"
           aria-pressed={editMode}
           onClick={() => setEditMode((v) => !v)}
-          style={{ borderColor: editMode ? "#2dd4bf" : undefined }}
+          style={{
+            borderColor: editMode ? "#2dd4bf" : "#3b82f6",
+            background: editMode ? "#064e3b" : "#1e293b",
+            color: editMode ? "#6ee7b7" : "#f8fafc",
+            fontWeight: 700,
+            fontSize: "12px",
+            padding: "8px 14px",
+            borderRadius: "8px",
+            borderWidth: "2px",
+          }}
         >
-          {editMode ? "Edit Object Mode: ON" : "Edit Object Mode: OFF"}
+          {editMode ? "🎯 Edit Object Mode: ON (Selection Active)" : "✏️ Edit Object Mode: OFF (Click to Enable)"}
         </button>
       </div>
+
+      {editMode && !editId ? (
+        <div style={{ background: "#064e3b33", border: "1px solid #10b981", borderRadius: "8px", padding: "10px", color: "#6ee7b7", fontSize: "13px" }}>
+          👉 <strong>Object Selection is Active:</strong> Click anywhere on the sofa or table in the 3D room to select it and start editing!
+        </div>
+      ) : null}
+      {!editMode && !editId ? (
+        <p style={{ color: "var(--muted)", fontSize: "12px", margin: 0 }}>
+          💡 To select an object for editing: Click <strong>&quot;Edit Object Mode: OFF&quot;</strong> above to turn it ON, then click any object in the 3D room.
+        </p>
+      ) : null}
 
       {project.versions.length > 0 ? (
         <div role="group" aria-label="Scene Version Switcher" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
