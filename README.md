@@ -7,7 +7,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x_CUDA-EE4C2C?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
 [![Three.js](https://img.shields.io/badge/Three.js-WebGL2_Splatting-000000?style=for-the-badge&logo=three.js)](https://threejs.org/)
-[![Vercel](https://img.shields.io/badge/Vercel-Live_Production-000000?style=for-the-badge&logo=vercel)](https://room-forge.vercel.app)
+[![Local Studio](https://img.shields.io/badge/Local_Studio-http%3A%2F%2Flocalhost%3A3000-000000?style=for-the-badge&logo=next.js)](http://localhost:3000)
 [![Kaggle](https://img.shields.io/badge/Kaggle-Dual_Tesla_T4_GPU-20BEFF?style=for-the-badge&logo=kaggle)](https://www.kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-67_Passing_100%25-success?style=for-the-badge&logo=pytest)](worker/tests)
@@ -34,7 +34,7 @@
 
 | Service | Destination | Purpose | Status |
 | :--- | :--- | :--- | :---: |
-| **Production Web Studio** | [room-forge.vercel.app](https://room-forge.vercel.app) | Interactive 3D WebGL2 browser studio | 🟢 Live |
+| **Local Studio (Active)** | [http://localhost:3000](http://localhost:3000) | Interactive 3D WebGL2 browser studio | 🟢 Running Live |
 | **GitHub Repository** | [github.com/markegyptian55-cloud/RoomForge](https://github.com/markegyptian55-cloud/RoomForge) | Source code & continuous integration | 🟢 Active |
 | **Vercel Project Dashboard** | [vercel.com/markegyptian55-4853/roomforge](https://vercel.com/markegyptian55-4853/roomforge) | Deployment metrics & edge configuration | 🟢 Configured |
 | **Kaggle GPU Worker** | [kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker](https://www.kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker) | Free Dual Tesla T4 (30 hrs/week) pull worker | 🟢 Ready |
