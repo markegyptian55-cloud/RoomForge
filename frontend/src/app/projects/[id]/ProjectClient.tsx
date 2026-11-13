@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import AuthModal from "@/components/AuthModal";
 import EditStudio from "@/components/EditStudio";
 import FloatingEditBar from "@/components/FloatingEditBar";
 import { ProgressPanel } from "@/components/ProgressPanel";
@@ -27,6 +28,15 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
   const [floatingBusy, setFloatingBusy] = useState(false);
   const [floatingStatus, setFloatingStatus] = useState("");
   const [error, setError] = useState("");
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedEmail = localStorage.getItem("roomforge_user_email");
+      if (savedEmail) setUserEmail(savedEmail);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -188,9 +198,45 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
             {sidebarOpen ? "⛶ Fullscreen 3D View" : "📋 Show Sidebar"}
           </button>
           <ThemeToggle />
+          {userEmail ? (
+            <span
+              style={{
+                fontSize: "12px",
+                color: "#2dd4bf",
+                background: "rgba(45, 212, 191, 0.15)",
+                padding: "5px 10px",
+                borderRadius: "6px",
+                border: "1px solid rgba(45, 212, 191, 0.3)",
+              }}
+            >
+              👤 {userEmail.split("@")[0]}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAuthModalOpen(true)}
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#f8fafc",
+                background: "#0284c7",
+                border: "none",
+                padding: "6px 12px",
+                borderRadius: "6px",
+                cursor: "pointer",
+              }}
+            >
+              Sign In
+            </button>
+          )}
           <Link className="back-link" href="/">← Projects</Link>
         </div>
       </header>
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onAuthSuccess={(_token, email) => setUserEmail(email)}
+      />
       <div className="studio-body">
         {error ? (
           <div className="studio-error-container">

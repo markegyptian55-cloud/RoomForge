@@ -11,6 +11,7 @@ export interface SplatManifestArtifacts {
 
 export interface SplatManifest {
   artifacts?: SplatManifestArtifacts;
+  T_viewer_from_colmap?: number[][];
 }
 
 export interface SplatLoadOptions {
@@ -141,6 +142,19 @@ async function loadCollision(
   }
 }
 
+function applyViewerTransform(object: THREE.Object3D, transform?: number[][]): void {
+  if (!transform || !Array.isArray(transform) || transform.length !== 4) return;
+  const flat = transform.flat();
+  if (flat.length !== 16) return;
+  const mat = new THREE.Matrix4().set(
+    flat[0]!, flat[1]!, flat[2]!, flat[3]!,
+    flat[4]!, flat[5]!, flat[6]!, flat[7]!,
+    flat[8]!, flat[9]!, flat[10]!, flat[11]!,
+    flat[12]!, flat[13]!, flat[14]!, flat[15]!,
+  );
+  object.applyMatrix4(mat);
+}
+
 export async function loadSplats(
   renderer: THREE.WebGLRenderer,
   scene: THREE.Scene,
@@ -196,6 +210,7 @@ export async function loadSplats(
       sparkRenderer = new SparkRenderer({ renderer });
       mesh = new SplatMesh({ url, raycastable: true });
       await mesh.initialized;
+      applyViewerTransform(mesh, manifest.T_viewer_from_colmap);
       const splatCount = mesh.splats?.getNumSplats() ?? mesh.packedSplats?.numSplats ?? 0;
       scene.add(sparkRenderer, mesh);
       return { mode: "spark", object: mesh, sparkRenderer, count: splatCount, collision };
@@ -213,6 +228,7 @@ export async function loadSplats(
   }
   const group = new THREE.Group();
   const count = await loadPoints(joinUrl(base, artifacts.sparse_points_relpath), group);
+  applyViewerTransform(group, manifest.T_viewer_from_colmap);
   scene.add(group);
   return { mode: "points", object: group, sparkRenderer: null, count, collision };
 }

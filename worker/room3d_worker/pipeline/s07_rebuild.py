@@ -76,10 +76,36 @@ def _read_ply_vertices(path: Path) -> tuple[ArrayF32, ArrayU8]:
     idx = raw.find(marker)
     if idx < 0:
         raise StageExecutionError(f"Malformed PLY header: {path}")
-    vertex_dtype = np.dtype([("x", "<f4"), ("y", "<f4"), ("z", "<f4"), ("red", "u1"), ("green", "u1"), ("blue", "u1")])
+    header_str = raw[:idx].decode("ascii", errors="replace")
+    properties: list[tuple[str, str]] = []
+    for line in header_str.splitlines():
+        line = line.strip()
+        if line.startswith("property "):
+            parts = line.split()
+            if len(parts) >= 3:
+                prop_type, prop_name = parts[1], parts[2]
+                if prop_type in ("float", "float32"):
+                    properties.append((prop_name, "<f4"))
+                elif prop_type in ("uchar", "uint8"):
+                    properties.append((prop_name, "u1"))
+                elif prop_type in ("int", "int32"):
+                    properties.append((prop_name, "<i4"))
+    if properties:
+        vertex_dtype = np.dtype(properties)
+    else:
+        vertex_dtype = np.dtype([("x", "<f4"), ("y", "<f4"), ("z", "<f4"), ("red", "u1"), ("green", "u1"), ("blue", "u1")])
+
     data = np.frombuffer(raw[idx + len(marker) :], dtype=vertex_dtype)
     points = np.stack([data["x"], data["y"], data["z"]], axis=1).astype(np.float32)
-    colors = np.stack([data["red"], data["green"], data["blue"]], axis=1).astype(np.uint8)
+    if "red" in data.dtype.names and "green" in data.dtype.names and "blue" in data.dtype.names:
+        colors = np.stack([data["red"], data["green"], data["blue"]], axis=1).astype(np.uint8)
+    elif "f_dc_0" in data.dtype.names:
+        r = np.clip((data["f_dc_0"] * 0.28209479177387814 + 0.5) * 255.0, 0, 255).astype(np.uint8)
+        g = np.clip((data["f_dc_1"] * 0.28209479177387814 + 0.5) * 255.0, 0, 255).astype(np.uint8)
+        b = np.clip((data["f_dc_2"] * 0.28209479177387814 + 0.5) * 255.0, 0, 255).astype(np.uint8)
+        colors = np.stack([r, g, b], axis=1)
+    else:
+        colors = np.full((len(points), 3), 200, dtype=np.uint8)
     return points, colors
 
 

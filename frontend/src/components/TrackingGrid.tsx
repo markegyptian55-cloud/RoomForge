@@ -69,13 +69,31 @@ export default function TrackingGrid({
                   {item.skip_frame ? "Skipped" : item.mask_status}
                 </span>
               </div>
-              {thumbSrc ? (
-                <img
-                  src={thumbSrc}
-                  alt={`Frame ${item.frame_idx}`}
-                  style={{ width: "100%", height: "64px", objectFit: "cover", borderRadius: "4px" }}
-                />
-              ) : null}
+              <div style={{ position: "relative", width: "100%", height: "64px", borderRadius: "4px", overflow: "hidden", background: "#0b1220" }}>
+                {thumbSrc ? (
+                  <img
+                    src={thumbSrc}
+                    alt={`Frame ${item.frame_idx}`}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : null}
+                {item.mask_key ? (
+                  <img
+                    src={`${assetBaseUrl}/${item.mask_key}`}
+                    alt={`Mask ${item.frame_idx}`}
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      mixBlendMode: "screen",
+                      opacity: 0.65,
+                      filter: "sepia(1) saturate(6) hue-rotate(95deg)",
+                    }}
+                  />
+                ) : null}
+              </div>
               <button
                 type="button"
                 disabled={busy}

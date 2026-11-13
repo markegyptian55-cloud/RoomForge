@@ -224,23 +224,24 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
         mesh.material = new THREE.MeshStandardMaterial({
           color: (target.includes("wall") && prompt.includes("green")) ? 0x2d6a4f : 0x7e9482,
           roughness: 0.88,
-          side: THREE.FrontSide,
+          side: THREE.DoubleSide,
         });
       } else if (name.includes("back_wall")) {
         mesh.material = new THREE.MeshStandardMaterial({
           color: (target.includes("wall") && prompt.includes("green")) ? 0x2d6a4f : 0xe8e4dc,
           roughness: 0.92,
-          side: THREE.FrontSide,
+          side: THREE.DoubleSide,
         });
       } else if (name.includes("left_top") || name.includes("left_bottom")) {
-        mesh.material = new THREE.MeshStandardMaterial({ color: 0x22262d, roughness: 0.4, metalness: 0.2 });
+        mesh.material = new THREE.MeshStandardMaterial({ color: 0x22262d, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide });
       } else if (name.includes("mullion")) {
-        mesh.material = new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.35, metalness: 0.6 });
+        mesh.material = new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.35, metalness: 0.6, side: THREE.DoubleSide });
       } else if (name.includes("window header") || name.includes("window sill") || name.includes("baseboard")) {
         mesh.material = new THREE.MeshStandardMaterial({
           color: 0x1e2229,
           roughness: 0.4,
           metalness: 0.75,
+          side: THREE.DoubleSide,
         });
       } else if (name.includes("front_wall") || name.includes("ceiling")) {
         mesh.visible = false;
@@ -473,10 +474,10 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     const ceilingLight = new THREE.PointLight(0xffedd5, 1.8, 12);
     ceilingLight.position.set(0.0, 2.3, 0.5);
     scene.add(ceilingLight);
-    scene.add(new THREE.AmbientLight(0xffffff, 2.4));
+    scene.add(new THREE.AmbientLight(0xffffff, 2.8));
     scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 1.8));
 
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500);
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.02, 500);
     // YXZ prevents gimbal roll during WASD + mouse-look walk mode.
     camera.rotation.order = "YXZ";
     camera.position.set(...DEFAULT_EYE);
@@ -497,8 +498,8 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     orbit.maxAzimuthAngle = Infinity;
     orbit.minPolarAngle = isMeshRoom ? 0.05 : 0;
     orbit.maxPolarAngle = isMeshRoom ? Math.PI / 2 - 0.02 : Math.PI;
-    orbit.minDistance = isMeshRoom ? 0.3 : 0.05;
-    orbit.maxDistance = isMeshRoom ? 7.0 : 500.0;
+    orbit.minDistance = isMeshRoom ? 0.15 : 0.05;
+    orbit.maxDistance = isMeshRoom ? 2.6 : 500.0;
     orbit.enabled = modeRef.current === "orbit";
 
     sceneRef.current = scene;
@@ -722,6 +723,12 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         orbit.update();
       }
 
+      if (isMeshRoom) {
+        camera.position.x = Math.max(-2.55, Math.min(2.55, camera.position.x));
+        camera.position.z = Math.max(-2.55, Math.min(2.55, camera.position.z));
+        camera.position.y = Math.max(0.35, Math.min(2.35, camera.position.y));
+      }
+
       renderer.render(scene, camera);
       frameCount += 1;
       const now = performance.now();
@@ -757,6 +764,21 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           asset = result;
           if (result.mode === "mesh" && result.object) {
             enhancePhotorealisticScene(result.object, scene, (manifest as { version_id?: string })?.version_id, manifest);
+          } else if (result.object) {
+            const box = new THREE.Box3().setFromObject(result.object);
+            if (!box.isEmpty()) {
+              const center = box.getCenter(new THREE.Vector3());
+              const size = box.getSize(new THREE.Vector3());
+              const maxDim = Math.max(size.x, size.y, size.z);
+              if (Number.isFinite(maxDim) && maxDim > 0) {
+                orbit.target.copy(center);
+                camera.position.set(center.x, center.y + maxDim * 0.4, center.z + maxDim * 1.2);
+                camera.lookAt(center);
+                orbit.minDistance = Math.max(0.05, maxDim * 0.05);
+                orbit.maxDistance = Math.max(10, maxDim * 4);
+                orbit.update();
+              }
+            }
           }
           setTelemetry((current) => ({ ...current, count: result.count, mode: result.mode }));
         })

@@ -185,6 +185,9 @@ export default function EditStudio({
   const { width, height } = manifestImageSize(manifest);
   const relpath = frameRelpathFor(manifest, refFrameIdx);
   const refImageUrl = relpath && assetBaseUrl ? `${assetBaseUrl}/${relpath}` : null;
+  const rawFrames = Array.isArray(manifest?.frames) ? manifest.frames : [];
+  const activeFrameMaskKey = framesData?.frames.find((f) => f.frame_idx === refFrameIdx)?.mask_key;
+  const activeMaskUrl = activeFrameMaskKey && assetBaseUrl ? `${assetBaseUrl}/${activeFrameMaskKey}` : null;
 
   return (
     <section className="glass-card" aria-label="Week 2 Edit Studio" style={{ padding: "16px", display: "grid", gap: "14px" }}>
@@ -215,6 +218,73 @@ export default function EditStudio({
           {editMode ? "🎯 Edit Object Mode: ON" : "✏️ Edit Object Mode: OFF (Press E)"}
         </button>
       </div>
+
+      {/* 2D Keyframe Sample Carousel (1-4 fps) */}
+      {rawFrames.length > 0 ? (
+        <div style={{ display: "grid", gap: "6px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted, #94a3b8)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              📸 Sampled Keyframes ({rawFrames.length} views)
+            </span>
+            <span style={{ fontSize: "11px", color: "#38bdf8" }}>
+              Active Frame #{refFrameIdx}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              overflowX: "auto",
+              paddingBottom: "6px",
+              scrollbarWidth: "thin",
+            }}
+          >
+            {rawFrames.map((f, idx) => {
+              const frameIdx = typeof f === "object" && f !== null && "frame_idx" in f ? (f.frame_idx as number) : idx;
+              const rel = typeof f === "object" && f !== null && "image_relpath" in f ? (f.image_relpath as string) : "";
+              const src = rel && assetBaseUrl ? `${assetBaseUrl}/${rel}` : null;
+              const isSelected = frameIdx === refFrameIdx;
+              return (
+                <button
+                  key={frameIdx}
+                  type="button"
+                  onClick={() => {
+                    setRefFrameIdx(frameIdx);
+                    if (!editId) {
+                      setEditId(`session-${frameIdx}`);
+                      setPoints([{ x: Math.round(width / 2), y: Math.round(height / 2), label: 1 }]);
+                    }
+                  }}
+                  style={{
+                    flex: "0 0 76px",
+                    display: "grid",
+                    gap: "2px",
+                    padding: "3px",
+                    background: isSelected ? "rgba(45, 212, 191, 0.2)" : "#0f172a",
+                    border: isSelected ? "2px solid #2dd4bf" : "1px solid #334155",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ width: "100%", height: "48px", overflow: "hidden", borderRadius: "3px", background: "#1e293b" }}>
+                    {src ? (
+                      <img src={src} alt={`Keyframe ${frameIdx}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", fontSize: "10px", color: "#64748b" }}>
+                        #{frameIdx}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{ fontSize: "9px", color: isSelected ? "#2dd4bf" : "#94a3b8", fontWeight: 600 }}>
+                    #{frameIdx}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {editMode && !editId ? (
         <div style={{ background: "#064e3b33", border: "1px solid #10b981", borderRadius: "8px", padding: "10px", color: "#6ee7b7", fontSize: "13px" }}>
@@ -312,6 +382,46 @@ export default function EditStudio({
                 Preview Seeds
               </button>
             </div>
+
+            {/* First-Frame Seed Preview Gallery */}
+            <div style={{ display: "grid", gap: "6px", background: "rgba(15, 23, 42, 0.7)", border: "1px solid #1e293b", borderRadius: "8px", padding: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600 }}>🌱 Diffusion Seed Candidates</span>
+                <span style={{ fontSize: "11px", color: "#2dd4bf" }}>Selected: {chosenSeed}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+                {DEFAULT_SEEDS.map((s) => {
+                  const seedKey = `seed_${s}`;
+                  const isSelected = chosenSeed === seedKey;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setChosenSeed(seedKey)}
+                      style={{
+                        border: isSelected ? "2px solid #2dd4bf" : "1px solid #334155",
+                        background: isSelected ? "rgba(45, 212, 191, 0.15)" : "#0b1220",
+                        borderRadius: "6px",
+                        padding: "6px",
+                        display: "grid",
+                        gap: "4px",
+                        cursor: "pointer",
+                        textAlign: "center",
+                      }}
+                    >
+                      <div style={{ height: "46px", background: "#1e293b", borderRadius: "4px", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: isSelected ? "#2dd4bf" : "#94a3b8" }}>
+                          Seed {s}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "10px", color: isSelected ? "#2dd4bf" : "#cbd5e1" }}>
+                        {isSelected ? "✓ Active" : "Select"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           {/* Advanced Frame & Mask Inspection Collapsible Accordion */}
@@ -332,6 +442,7 @@ export default function EditStudio({
                 refFrameIdx={refFrameIdx}
                 points={points}
                 imageUrl={refImageUrl}
+                maskUrl={activeMaskUrl}
                 imageWidth={width}
                 imageHeight={height}
                 busy={busy}

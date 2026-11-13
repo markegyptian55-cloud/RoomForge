@@ -175,7 +175,7 @@ class VGGTChunkedBackend:
         for start in range(0, len(images), step):
             chunk = self.runner.infer(images[start : start + self.chunk_size], dtype="fp16")
             if chunks:
-                self._align_chunk(chunks[0], chunk)
+                self._align_chunk(chunks[-1], chunk)
             chunks.append(chunk)
             if start + self.chunk_size >= len(images):
                 break
@@ -201,6 +201,14 @@ class VGGTChunkedBackend:
         scale, rotation, translation = align_sim3(chunk.cam_positions_xyz[:count], reference.cam_positions_xyz[-count:])
         chunk.points_xyz = (scale * (rotation @ chunk.points_xyz.T)).T + translation
         chunk.cam_positions_xyz = (scale * (rotation @ chunk.cam_positions_xyz.T)).T + translation
+        sim3_mat = np.eye(4, dtype=np.float64)
+        sim3_mat[:3, :3] = scale * rotation
+        sim3_mat[:3, 3] = translation
+        sim3_inv = np.linalg.inv(sim3_mat)
+        for frame in chunk.frames:
+            if "cam_from_world" in frame:
+                cfw = np.asarray(frame["cam_from_world"], dtype=np.float64)
+                frame["cam_from_world"] = (cfw @ sim3_inv).tolist()
 
 
 class MapAnythingBackend:
@@ -211,21 +219,91 @@ class MapAnythingBackend:
         return self.runner.infer(sorted(request.image_dir.glob("*")), dtype="fp16")
 
 
+def _extract_cam_from_world(img: Any) -> list[list[float]]:
+    if hasattr(img, "cam_from_world"):
+        cfw = img.cam_from_world
+        if hasattr(cfw, "matrix"):
+            mat = np.asarray(cfw.matrix(), dtype=np.float64)
+            if mat.shape == (3, 4):
+                mat4 = np.eye(4, dtype=np.float64)
+                mat4[:3, :] = mat
+                return mat4.tolist()
+            if mat.shape == (4, 4):
+                return mat.tolist()
+        if hasattr(cfw, "rotation") and hasattr(cfw, "translation"):
+            rot = cfw.rotation.matrix() if hasattr(cfw.rotation, "matrix") else np.asarray(cfw.rotation)
+            t = np.asarray(cfw.translation, dtype=np.float64).flatten()
+            mat4 = np.eye(4, dtype=np.float64)
+            mat4[:3, :3] = rot
+            mat4[:3, 3] = t
+            return mat4.tolist()
+    if hasattr(img, "rotmat") and hasattr(img, "tvec"):
+        mat4 = np.eye(4, dtype=np.float64)
+        mat4[:3, :3] = img.rotmat() if callable(img.rotmat) else img.rotmat
+        mat4[:3, 3] = np.asarray(img.tvec, dtype=np.float64).flatten()
+        return mat4.tolist()
+    if hasattr(img, "rotation_matrix") and hasattr(img, "translation"):
+        mat4 = np.eye(4, dtype=np.float64)
+        mat4[:3, :3] = img.rotation_matrix() if callable(img.rotation_matrix) else img.rotation_matrix
+        mat4[:3, 3] = np.asarray(img.translation, dtype=np.float64).flatten()
+        return mat4.tolist()
+    return np.eye(4, dtype=np.float64).tolist()
+
+
 def _from_reconstruction(rec: Any, request: PoseRequest, sparse_dir: Path) -> BackendOutput:
-    points = np.array([p.xyz for p in rec.points3D.values()], dtype=np.float64)
+    points = np.array([p.xyz for p in rec.points3D.values()], dtype=np.float64) if hasattr(rec, "points3D") and rec.points3D else np.zeros((0, 3), dtype=np.float64)
     if len(points) < 3:
         points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]], dtype=np.float64)
-    cam_positions = np.array([img.projection_center() for img in rec.images.values()], dtype=np.float64)
+    cam_positions = np.array([img.projection_center() for img in rec.images.values()], dtype=np.float64) if hasattr(rec, "images") and rec.images else np.zeros((0, 3), dtype=np.float64)
     if len(cam_positions) == 0:
         cam_positions = np.zeros((1, 3), dtype=np.float64)
-    reproj = float(rec.compute_mean_reprojection_error()) if hasattr(rec, "compute_mean_reprojection_error") and rec.points3D else 0.0
+    reproj = float(rec.compute_mean_reprojection_error()) if hasattr(rec, "compute_mean_reprojection_error") and getattr(rec, "points3D", None) else 0.0
+
+    img_by_name: dict[str, tuple[int, Any]] = {}
+    if hasattr(rec, "images") and rec.images:
+        for img_id, img in rec.images.items():
+            name = str(getattr(img, "name", img_id))
+            img_by_name[name] = (int(img_id), img)
+            img_by_name[Path(name).name] = (int(img_id), img)
+
+    frames: list[dict[str, Any]] = []
+    if request.frame_records:
+        for rec_frame in request.frame_records:
+            item = dict(rec_frame)
+            relpath = str(item.get("image_relpath", ""))
+            base_name = Path(relpath).name
+            matched = img_by_name.get(relpath) or img_by_name.get(base_name)
+            if matched:
+                colmap_id, img = matched
+                item["colmap_image_id"] = colmap_id
+                item["cam_from_world"] = _extract_cam_from_world(img)
+            else:
+                if "cam_from_world" not in item:
+                    item["cam_from_world"] = np.eye(4, dtype=np.float64).tolist()
+                if "colmap_image_id" not in item:
+                    item["colmap_image_id"] = len(frames) + 1
+            frames.append(item)
+    elif hasattr(rec, "images") and rec.images:
+        for idx, (img_id, img) in enumerate(sorted(rec.images.items(), key=lambda kv: kv[0])):
+            name = str(getattr(img, "name", f"frame_{idx:06d}.jpg"))
+            frames.append({
+                "frame_idx": idx,
+                "orig_video_frame": idx,
+                "timestamp_sec": float(idx * 0.1),
+                "image_relpath": f"images/{name}",
+                "colmap_image_id": int(img_id),
+                "cam_from_world": _extract_cam_from_world(img),
+            })
+    else:
+        frames = list(request.frame_records)
+
     return BackendOutput(
-        registered_frames=len(rec.images),
+        registered_frames=len(rec.images) if hasattr(rec, "images") else len(frames),
         mean_reproj_px=reproj,
-        num_points3d=len(rec.points3D),
+        num_points3d=len(rec.points3D) if hasattr(rec, "points3D") else len(points),
         points_xyz=points,
         cam_positions_xyz=cam_positions,
-        frames=request.frame_records,
+        frames=frames,
         sparse_dir=sparse_dir,
     )
 

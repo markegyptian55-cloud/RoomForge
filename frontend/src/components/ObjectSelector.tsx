@@ -13,6 +13,7 @@ export interface ObjectSelectorProps {
   refFrameIdx: number;
   points: PromptPoint[];
   imageUrl: string | null;
+  maskUrl?: string | null;
   imageWidth: number;
   imageHeight: number;
   busy: boolean;
@@ -25,6 +26,7 @@ export default function ObjectSelector({
   refFrameIdx,
   points,
   imageUrl,
+  maskUrl,
   imageWidth,
   imageHeight,
   busy,
@@ -73,6 +75,23 @@ export default function ObjectSelector({
         style={{ position: "relative", width: "100%", aspectRatio: `${imageWidth}/${imageHeight}`, background: "#0b1220", border: "1px solid #334155", borderRadius: "8px", overflow: "hidden", cursor: "crosshair" }}
       >
         {imageUrl ? <img src={imageUrl} alt={`Reference frame ${refFrameIdx}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : null}
+        {maskUrl ? (
+          <img
+            src={maskUrl}
+            alt={`Mask overlay for frame ${refFrameIdx}`}
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              mixBlendMode: "screen",
+              opacity: 0.65,
+              pointerEvents: "none",
+              filter: "sepia(1) saturate(6) hue-rotate(95deg)",
+            }}
+          />
+        ) : null}
         {points.map((pt, idx) => (
           <span
             key={`${pt.x}-${pt.y}-${idx}`}
