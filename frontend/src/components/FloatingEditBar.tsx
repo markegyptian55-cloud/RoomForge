@@ -57,7 +57,7 @@ export default function FloatingEditBar({
       aria-label="AI Generative 3D Editor"
       style={{
         position: "absolute",
-        bottom: "64px",
+        bottom: "76px",
         left: "50%",
         transform: "translateX(-50%)",
         width: "92%",
@@ -69,7 +69,7 @@ export default function FloatingEditBar({
         padding: "16px 20px",
         boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(45, 212, 191, 0.15)",
         color: "#f8fafc",
-        zIndex: 25,
+        zIndex: 30,
         display: "flex",
         flexDirection: "column",
         gap: "12px",
@@ -122,7 +122,12 @@ export default function FloatingEditBar({
           value={prompt}
           placeholder={`Replace ${selectedObject.toLowerCase()} with... (e.g. Modern camel leather armchair)`}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            handleKeyDown(e);
+          }}
+          onKeyUp={(e) => e.stopPropagation()}
+          onKeyPress={(e) => e.stopPropagation()}
           maxLength={1000}
           disabled={busy}
           style={{

@@ -30,7 +30,10 @@ def _make_box(extents: tuple[float, float, float], center: tuple[float, float, f
 
 
 def _make_cylinder(radius: float, height: float, center: tuple[float, float, float], color: list[int], name: str) -> trimesh.Trimesh:
-    mesh = trimesh.creation.cylinder(radius=radius, height=height, sections=24)
+    mesh = trimesh.creation.cylinder(radius=radius, height=height, sections=36)
+    # Rotate -90 degrees around X to map canonical Z-height to room Y-up (vertical)
+    r_x = trimesh.transformations.rotation_matrix(-math.pi / 2, [1.0, 0.0, 0.0])
+    mesh.apply_transform(r_x)
     mesh.apply_translation(center)
     mesh.visual.vertex_colors = np.full((len(mesh.vertices), 4), color, dtype=np.uint8)
     mesh.metadata["name"] = name
@@ -44,11 +47,7 @@ def build_room_scene(sofa_color: list[int]) -> trimesh.Scene:
     floor = _make_box((6.0, 0.04, 6.0), (0.0, -0.02, 0.0), [185, 142, 98, 255], "Oak Parquet Floor")
     scene.add_geometry(floor, node_name="floor")
 
-    # 2. Ceiling with downlights
-    ceiling = _make_box((6.0, 0.04, 6.0), (0.0, 2.67, 0.0), [240, 238, 235, 255], "Ceiling")
-    scene.add_geometry(ceiling, node_name="ceiling")
-
-    # 3. Back Wall (Soft stone plaster)
+    # 2. Back Wall (Soft stone plaster behind sofa)
     back_wall = _make_box((6.0, 2.65, 0.08), (0.0, 1.325, 3.0), [232, 229, 224, 255], "Back Wall")
     scene.add_geometry(back_wall, node_name="back_wall")
 
@@ -56,11 +55,11 @@ def build_room_scene(sofa_color: list[int]) -> trimesh.Scene:
     baseboard = _make_box((6.0, 0.14, 0.1), (0.0, 0.07, 2.99), [42, 48, 56, 255], "Baseboard")
     scene.add_geometry(baseboard, node_name="baseboard")
 
-    # 4. Right Wall (Sage green accent wall)
+    # 3. Right Wall (Sage green accent wall)
     right_wall = _make_box((0.08, 2.65, 6.0), (3.0, 1.325, 0.0), [175, 192, 178, 255], "Sage Accent Wall")
     scene.add_geometry(right_wall, node_name="right_wall")
 
-    # 5. Left Wall with Panoramic Glass Window
+    # 4. Left Wall with Panoramic Glass Window
     left_top = _make_box((0.08, 0.35, 6.0), (-3.0, 2.475, 0.0), [232, 229, 224, 255], "Window Header")
     left_bottom = _make_box((0.08, 0.45, 6.0), (-3.0, 0.225, 0.0), [232, 229, 224, 255], "Window Sill")
     window_glass = _make_box((0.02, 1.75, 5.8), (-3.02, 1.325, 0.0), [145, 195, 235, 180], "Terrace Window Glass")
@@ -73,11 +72,7 @@ def build_room_scene(sofa_color: list[int]) -> trimesh.Scene:
         mullion = _make_box((0.06, 1.75, 0.06), (-3.0, 1.325, mz), [30, 32, 36, 255], f"Mullion_{mz}")
         scene.add_geometry(mullion, node_name=f"mullion_{mz}")
 
-    # 6. Front Wall (Soft neutral)
-    front_wall = _make_box((6.0, 2.65, 0.08), (0.0, 1.325, -3.0), [225, 222, 218, 255], "Front Wall")
-    scene.add_geometry(front_wall, node_name="front_wall")
-
-    # 7. Modern Persian Area Rug
+    # 5. Modern Persian Area Rug
     rug = _make_box((3.2, 0.015, 2.4), (-0.5, 0.008, 1.25), [218, 182, 155, 255], "Area Rug")
     scene.add_geometry(rug, node_name="rug")
 
@@ -125,17 +120,28 @@ def build_room_scene(sofa_color: list[int]) -> trimesh.Scene:
 
     # 13. Corner Potted Plant (Fiddle Leaf Fig)
     pot = _make_cylinder(0.24, 0.45, (-2.4, 0.225, 2.45), [195, 95, 62, 255], "Terracotta Planter")
+    soil = _make_cylinder(0.23, 0.04, (-2.4, 0.43, 2.45), [65, 45, 30, 255], "Plant Soil")
     scene.add_geometry(pot, node_name="plant_pot")
-    # Plant foliage canopy
-    leaves = _make_box((0.7, 0.95, 0.7), (-2.4, 0.95, 2.45), [34, 125, 58, 255], "Ficus Plant Leaves")
-    scene.add_geometry(leaves, node_name="plant_leaves")
+    scene.add_geometry(soil, node_name="plant_soil")
+    # Natural multi-layered architectural plant foliage
+    leaf_clusters = [
+        ((0.55, 0.28, 0.55), (-2.4, 0.72, 2.45), [28, 115, 52, 255]),
+        ((0.68, 0.32, 0.62), (-2.4, 0.98, 2.45), [34, 130, 60, 255]),
+        ((0.58, 0.35, 0.58), (-2.38, 1.25, 2.42), [42, 145, 68, 255]),
+        ((0.42, 0.25, 0.42), (-2.42, 1.50, 2.46), [48, 160, 75, 255]),
+    ]
+    for idx, (ext, pos, col) in enumerate(leaf_clusters):
+        l_mesh = _make_box(ext, pos, col, f"Plant Leaves {idx}")
+        scene.add_geometry(l_mesh, node_name=f"plant_leaves_{idx}")
 
     # 14. Designer Brass Arc Lamp
-    lamp_base = _make_cylinder(0.22, 0.03, (1.8, 0.015, 2.0), [215, 175, 95, 255], "Lamp Base")
-    lamp_stem = _make_cylinder(0.02, 2.2, (1.8, 1.1, 2.0), [215, 175, 95, 255], "Lamp Stem")
-    lamp_shade = _make_cylinder(0.18, 0.22, (1.0, 2.05, 1.4), [255, 250, 235, 255], "Lamp Shade")
+    lamp_base = _make_cylinder(0.24, 0.035, (1.8, 0.0175, 2.0), [215, 175, 95, 255], "Lamp Base")
+    lamp_stem = _make_cylinder(0.018, 1.85, (1.8, 0.95, 2.0), [215, 175, 95, 255], "Lamp Stem")
+    lamp_arm = _make_box((0.8, 0.02, 0.6), (1.4, 1.9, 1.7), [215, 175, 95, 255], "Lamp Arm")
+    lamp_shade = _make_cylinder(0.18, 0.22, (1.0, 1.85, 1.4), [255, 250, 235, 255], "Lamp Shade")
     scene.add_geometry(lamp_base, node_name="lamp_base")
     scene.add_geometry(lamp_stem, node_name="lamp_stem")
+    scene.add_geometry(lamp_arm, node_name="lamp_arm")
     scene.add_geometry(lamp_shade, node_name="lamp_shade")
 
     return scene
@@ -255,10 +261,11 @@ def seed_realistic_project() -> None:
     session = sessionmaker(bind=engine)()
 
     project_id = "realistic-room"
-    existing = session.get(Project, project_id)
-    if existing:
-        session.delete(existing)
-        session.commit()
+    session.query(EditSession).filter_by(project_id=project_id).delete()
+    session.query(Task).filter_by(project_id=project_id).delete()
+    session.query(SceneVersion).filter_by(project_id=project_id).delete()
+    session.query(Project).filter_by(id=project_id).delete()
+    session.commit()
 
     storage_dir = Path(settings.local_storage_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -287,6 +294,7 @@ def seed_realistic_project() -> None:
     project = Project(
         id=project_id,
         name="Modern Luxury Suite (Photorealistic 3D)",
+        status="completed",
         active_version_id="realistic-v1",
     )
     v1 = SceneVersion(

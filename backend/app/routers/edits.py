@@ -487,9 +487,23 @@ def quick_edit(
     base_version_id = project.active_version_id or (
         existing_versions[0].id if existing_versions else "v1"
     )
-    storage_dir = Path("data/storage") / project.id
+    settings = get_settings()
+    storage_root = Path(settings.local_storage_dir).resolve()
+    storage_dir = storage_root / project.id
     base_dir = storage_dir / base_version_id
     new_dir = storage_dir / version_id
+
+    if not base_dir.exists():
+        base_version = session.scalar(
+            select(SceneVersion).where(
+                SceneVersion.id == base_version_id,
+                SceneVersion.project_id == project.id,
+            )
+        )
+        if base_version and base_version.manifest_relpath:
+            candidate = (storage_root / base_version.manifest_relpath).parent
+            if candidate.exists():
+                base_dir = candidate
 
     if base_dir.exists():
         shutil.copytree(base_dir, new_dir, dirs_exist_ok=True)

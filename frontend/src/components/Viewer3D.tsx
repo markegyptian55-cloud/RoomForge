@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import {
   applyDirection4RowMajor,
   applyMatrix4RowMajor,
@@ -38,8 +39,8 @@ const IDENTITY_MATRIX: number[] = [
   0, 0, 0, 1,
 ];
 
-const DEFAULT_EYE: [number, number, number] = [0.2, 1.4, -2.0];
-const DEFAULT_TARGET: [number, number, number] = [-0.25, 0.75, 1.6];
+const DEFAULT_EYE: [number, number, number] = [-0.4, 1.45, -2.2];
+const DEFAULT_TARGET: [number, number, number] = [-0.45, 0.75, 1.35];
 
 function flattenMatrix(input?: number[][]): number[] {
   const flat = input?.flat();
@@ -68,7 +69,7 @@ function poseCamera(
   }
 }
 
-function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, versionId?: string) {
+function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, versionId?: string, manifest?: any) {
   const textureLoader = new THREE.TextureLoader();
 
   // Load PBR Textures
@@ -79,10 +80,23 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
 
   const walnutTex = textureLoader.load("/textures/walnut_wood.jpg");
 
+  const lastEdit = manifest?.last_edit;
+  const prompt = (lastEdit?.prompt || "").toLowerCase();
+  const target = (lastEdit?.target_object || "").toLowerCase();
+
   let artUrl = "/textures/art_modern_abstract.jpg";
-  if (versionId?.toLowerCase().includes("green")) {
+  if (
+    versionId?.toLowerCase().includes("green") ||
+    (target.includes("art") && prompt.includes("green")) ||
+    (target.includes("canvas") && prompt.includes("green")) ||
+    (target.includes("frame") && prompt.includes("green"))
+  ) {
     artUrl = "/textures/art_green_emerald.jpg";
-  } else if (versionId?.toLowerCase().includes("sunflower") || versionId?.toLowerCase().includes("yellow")) {
+  } else if (
+    versionId?.toLowerCase().includes("sunflower") ||
+    versionId?.toLowerCase().includes("yellow") ||
+    (target.includes("art") && (prompt.includes("sunflower") || prompt.includes("yellow")))
+  ) {
     artUrl = "/textures/art_sunflowers.jpg";
   }
   const artTex = textureLoader.load(artUrl);
@@ -90,21 +104,30 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
 
   // Outdoor Terrace Backdrop behind the panoramic window
   if (!scene.getObjectByName("terrace_backdrop")) {
-    const backdropGeo = new THREE.PlaneGeometry(8.0, 3.8);
-    const backdropMat = new THREE.MeshBasicMaterial({ map: windowViewTex, side: THREE.DoubleSide });
+    const backdropGeo = new THREE.PlaneGeometry(5.8, 1.85);
+    const backdropMat = new THREE.MeshBasicMaterial({ map: windowViewTex, side: THREE.FrontSide });
     const backdrop = new THREE.Mesh(backdropGeo, backdropMat);
     backdrop.name = "terrace_backdrop";
-    backdrop.position.set(-3.25, 1.35, 0.0);
+    backdrop.position.set(-3.06, 1.325, 0.0);
     backdrop.rotation.y = Math.PI / 2;
     scene.add(backdrop);
   }
 
-  // Detect sofa color from version label
-  const isRedSofa = Boolean(
+  // Detect sofa color from version or prompt edit
+  let sofaColor = 0x203a5e;
+  if (
     versionId?.toLowerCase().includes("red") ||
-    versionId?.toLowerCase().includes("v2")
-  );
-  const sofaColor = isRedSofa ? 0x8b1e2c : 0x203a5e;
+    versionId?.toLowerCase().includes("v2") ||
+    (target.includes("sofa") && (prompt.includes("red") || prompt.includes("crimson") || prompt.includes("burgundy")))
+  ) {
+    sofaColor = 0x8b1e2c;
+  } else if (target.includes("sofa") && (prompt.includes("green") || prompt.includes("emerald"))) {
+    sofaColor = 0x166548;
+  } else if (target.includes("sofa") && (prompt.includes("black") || prompt.includes("charcoal"))) {
+    sofaColor = 0x18181b;
+  } else if (target.includes("sofa") && (prompt.includes("yellow") || prompt.includes("ochre") || prompt.includes("gold"))) {
+    sofaColor = 0xd49b38;
+  }
 
   root.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
@@ -181,7 +204,12 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
           roughness: 0.28,
           metalness: 0.04,
         });
-      } else if (name.includes("lamp_base") || name.includes("lamp_stem")) {
+      } else if (name.includes("plant_soil") || name.includes("soil")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0x3d271d,
+          roughness: 0.95,
+        });
+      } else if (name.includes("lamp_base") || name.includes("lamp_stem") || name.includes("lamp_arm")) {
         mesh.material = new THREE.MeshStandardMaterial({
           color: 0xd4af37,
           metalness: 0.92,
@@ -191,7 +219,7 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
         mesh.material = new THREE.MeshStandardMaterial({
           color: 0xfffaed,
           emissive: 0xffe2b8,
-          emissiveIntensity: 0.55,
+          emissiveIntensity: 0.65,
           roughness: 0.3,
         });
       } else if (name.includes("window_glass") || name.includes("glass")) {
@@ -204,19 +232,24 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
         });
       } else if (name.includes("right_wall")) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0x7e9482,
+          color: (target.includes("wall") && prompt.includes("green")) ? 0x2d6a4f : 0x7e9482,
           roughness: 0.88,
+          side: THREE.FrontSide,
         });
-      } else if (name.includes("back_wall") || name.includes("front_wall")) {
+      } else if (name.includes("back_wall")) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0xe8e4dc,
+          color: (target.includes("wall") && prompt.includes("green")) ? 0x2d6a4f : 0xe8e4dc,
           roughness: 0.92,
+          side: THREE.FrontSide,
         });
-      } else if (name.includes("ceiling")) {
+      } else if (name.includes("mullion") || name.includes("window header") || name.includes("window sill") || name.includes("baseboard")) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0xf6f5f2,
-          roughness: 0.95,
+          color: 0x1e2229,
+          roughness: 0.4,
+          metalness: 0.75,
         });
+      } else if (name.includes("front_wall") || name.includes("ceiling")) {
+        mesh.visible = false;
       }
     }
   });
@@ -430,20 +463,23 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     if (!host) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#0c111d");
+    scene.background = new THREE.Color("#181e2b");
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.8);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x64748b, 2.0);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xfffaf0, 2.2);
+    const ambLight = new THREE.AmbientLight(0xffffff, 1.4);
+    scene.add(ambLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfffaf0, 2.4);
     dirLight.position.set(2.5, 4.0, -1.5);
     scene.add(dirLight);
 
-    const fillLight = new THREE.PointLight(0xffecd2, 1.5, 12);
+    const fillLight = new THREE.PointLight(0xffecd2, 1.8, 14);
     fillLight.position.set(0.0, 2.2, 0.5);
     scene.add(fillLight);
 
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 500);
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 500);
     // YXZ prevents gimbal roll during WASD + mouse-look walk mode.
     camera.rotation.order = "YXZ";
     camera.position.set(...DEFAULT_EYE);
@@ -457,9 +493,21 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
+    // Setup PMREM Room Environment for photorealistic metallic & specular reflections
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    const roomEnv = new RoomEnvironment();
+    scene.environment = pmremGenerator.fromScene(roomEnv).texture;
+
     const orbit = new OrbitControls(camera, renderer.domElement);
     orbit.target.set(...DEFAULT_TARGET);
     orbit.enableDamping = true;
+    orbit.minPolarAngle = 0.2;
+    orbit.maxPolarAngle = Math.PI / 2 - 0.05;
+    orbit.minDistance = 1.0;
+    orbit.maxDistance = 4.0;
+    orbit.minAzimuthAngle = -Math.PI * 0.44;
+    orbit.maxAzimuthAngle = Math.PI * 0.44;
     orbit.enabled = modeRef.current === "orbit";
 
     sceneRef.current = scene;
@@ -637,6 +685,9 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           input.normalize().multiplyScalar(speed * delta);
           input.applyEuler(new THREE.Euler(0, camera.rotation.y, 0));
           camera.position.add(input);
+          camera.position.x = Math.max(-2.6, Math.min(2.6, camera.position.x));
+          camera.position.z = Math.max(-2.6, Math.min(2.6, camera.position.z));
+          camera.position.y = 1.35;
         }
       } else {
         orbit.enabled = true;
@@ -666,7 +717,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
             phi = Math.max(0.08, phi - panSpeed);
           }
           if (keys.has("arrowdown") || keys.has("s")) {
-            phi = Math.min(Math.PI - 0.08, phi + panSpeed);
+            phi = Math.min(Math.PI / 2 - 0.05, phi + panSpeed);
           }
 
           offset.x = radius * Math.sin(phi) * Math.sin(theta);
@@ -712,7 +763,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           }
           asset = result;
           if (result.mode === "mesh" && result.object) {
-            enhancePhotorealisticScene(result.object, scene, (manifest as { version_id?: string })?.version_id);
+            enhancePhotorealisticScene(result.object, scene, (manifest as { version_id?: string })?.version_id, manifest);
           }
           setTelemetry((current) => ({ ...current, count: result.count, mode: result.mode }));
         })
