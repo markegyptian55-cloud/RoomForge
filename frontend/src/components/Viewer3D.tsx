@@ -519,8 +519,30 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     if (!host) return;
     const isMeshRoom = Boolean(manifest?.artifacts?.scene_glb_relpath || manifest?.artifacts?.mesh_glb_relpath);
 
+    const isInitialDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#181e2b");
+    scene.background = new THREE.Color(isInitialDark ? 0x07090e : 0xf1f5f9);
+
+    const updateSceneTheme = () => {
+      const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+      const bgColor = isDark ? 0x07090e : 0xf1f5f9;
+      scene.background = new THREE.Color(bgColor);
+      if (renderer) renderer.setClearColor(bgColor, 1);
+    };
+
+    const themeObserver = typeof MutationObserver !== "undefined"
+      ? new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.attributeName === "class") {
+              updateSceneTheme();
+              break;
+            }
+          }
+        })
+      : null;
+    if (typeof document !== "undefined") {
+      themeObserver?.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    }
 
     const sunLight = new THREE.DirectionalLight(0xfff7ed, 3.2);
     sunLight.position.set(-4.0, 3.0, 0.0);
@@ -878,6 +900,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         cancelAnimationFrame(pathRafRef.current);
         pathRafRef.current = null;
       }
+      themeObserver?.disconnect();
       resizeObserver?.disconnect();
       window.removeEventListener("resize", resize);
       window.removeEventListener("keydown", onKeyDown);
@@ -1011,20 +1034,20 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           top: "14px",
           right: "14px",
           zIndex: 12,
-          background: "rgba(15, 23, 42, 0.88)",
+          background: "var(--glass-bg)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          border: "1px solid rgba(245, 158, 11, 0.45)",
+          border: "1px solid var(--glass-border)",
           borderRadius: "999px",
           padding: "7px 14px",
-          color: "#fbbf24",
+          color: "var(--primary)",
           fontSize: "12px",
           fontWeight: 700,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
           gap: "6px",
-          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
+          boxShadow: "var(--glass-shadow)",
         }}
       >
         <span style={{ fontSize: "14px" }}>🎯</span>

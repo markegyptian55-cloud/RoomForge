@@ -187,8 +187,8 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
             onClick={() => setSidebarOpen((v) => !v)}
             title={sidebarOpen ? "Expand 3D viewport to full screen" : "Show sidebar and project controls"}
             style={{
-              background: sidebarOpen ? "rgba(255, 255, 255, 0.05)" : "#10b981",
-              color: sidebarOpen ? "var(--ink)" : "#ffffff",
+              background: sidebarOpen ? "var(--card)" : "var(--primary)",
+              color: sidebarOpen ? "var(--ink)" : "#07090e",
               border: "1px solid var(--line)",
               borderRadius: "8px",
               padding: "5px 12px",

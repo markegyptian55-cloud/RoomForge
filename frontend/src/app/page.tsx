@@ -214,8 +214,8 @@ export default function HomePage() {
                   borderRadius: "8px",
                   fontSize: "12px",
                   fontWeight: 600,
-                  background: uploadMode === "video" ? "var(--primary)" : "rgba(255, 255, 255, 0.05)",
-                  color: uploadMode === "video" ? "#07090e" : "var(--muted)",
+                  background: uploadMode === "video" ? "var(--primary)" : "var(--card-hover)",
+                  color: uploadMode === "video" ? "#07090e" : "var(--ink)",
                   border: "1px solid var(--line)",
                   display: "flex",
                   alignItems: "center",
@@ -235,8 +235,8 @@ export default function HomePage() {
                   borderRadius: "8px",
                   fontSize: "12px",
                   fontWeight: 600,
-                  background: uploadMode === "photo" ? "var(--primary)" : "rgba(255, 255, 255, 0.05)",
-                  color: uploadMode === "photo" ? "#07090e" : "var(--muted)",
+                  background: uploadMode === "photo" ? "var(--primary)" : "var(--card-hover)",
+                  color: uploadMode === "photo" ? "#07090e" : "var(--ink)",
                   border: "1px solid var(--line)",
                   display: "flex",
                   alignItems: "center",
@@ -300,10 +300,10 @@ export default function HomePage() {
             <label className="dropzone">
               <UploadCloud size={32} color="var(--primary)" />
               {file ? (
-                <div style={{ color: "#fff", fontWeight: 600 }}>{file.name}</div>
+                <div style={{ color: "var(--ink)", fontWeight: 600 }}>{file.name}</div>
               ) : (
                 <>
-                  <strong style={{ color: "#fff", fontSize: "14px" }}>
+                  <strong style={{ color: "var(--ink)", fontSize: "14px" }}>
                     {uploadMode === "video"
                       ? "Choose or drop a room video (MP4, MOV, WebM)"
                       : "Choose or drop a room photo (JPG, PNG, WebP)"}

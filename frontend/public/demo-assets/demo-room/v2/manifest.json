@@ -323,7 +323,9 @@
     "sparse_points_relpath": "sparse_points.json",
     "ckpt_relpath": "gs_ckpt.pt",
     "depth_dir": null,
-    "collision_glb_relpath": null
+    "collision_glb_relpath": null,
+    "scene_glb_relpath": "scene.glb",
+    "mesh_glb_relpath": "scene.glb"
   },
   "metrics": {
     "gaussian_count": 269900,

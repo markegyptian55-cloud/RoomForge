@@ -38,6 +38,8 @@ runs/
 *.spz
 *.sog
 *.glb
+!frontend/public/**/*.glb
+!frontend/public/**/*.spz
 *.pt
 *.pth
 *.safetensors

@@ -1,25 +1,71 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=DM+Mono:wght@400;500&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --ink: #f8fafc;
-  --muted: #94a3b8;
-  --subtle: #64748b;
-  --line: rgba(255, 255, 255, 0.09);
-  --paper: #07090e;
-  --card: #0e121a;
-  --card-hover: #141a24;
-  --primary: #f59e0b;
-  --primary-hover: #d97706;
-  --primary-glow: rgba(245, 158, 11, 0.22);
-  --emerald: #10b981;
-  --emerald-glow: rgba(16, 185, 129, 0.22);
-  --red: #f43f5e;
+  /* Luxury Light Theme (Alabaster / Warm Ivory / Gold / Slate) */
+  --ink: #0f172a;
+  --ink-secondary: #334155;
+  --muted: #64748b;
+  --subtle: #94a3b8;
+  --line: rgba(15, 23, 42, 0.1);
+  --line-strong: rgba(15, 23, 42, 0.18);
+  --paper: #f8fafc;
+  --paper-gradient-start: rgba(217, 119, 6, 0.06);
+  --paper-gradient-mid: rgba(5, 150, 105, 0.04);
+  --card: #ffffff;
+  --card-hover: #f1f5f9;
+  --primary: #d97706;
+  --primary-hover: #b45309;
+  --primary-glow: rgba(217, 119, 6, 0.16);
+  --primary-fg: #ffffff;
+  --emerald: #059669;
+  --emerald-glow: rgba(5, 150, 105, 0.16);
+  --red: #e11d48;
+  --glass-bg: rgba(255, 255, 255, 0.94);
+  --glass-border: rgba(217, 119, 6, 0.35);
+  --glass-shadow: 0 16px 40px rgba(15, 23, 42, 0.12), 0 0 20px rgba(217, 119, 6, 0.1);
+  --backdrop-bg: rgba(15, 23, 42, 0.35);
+  --input-bg: #ffffff;
+  --pill-bg: #f8fafc;
+  --pill-border: rgba(15, 23, 42, 0.12);
+  --h1-gradient: linear-gradient(180deg, #0f172a 30%, #475569 100%);
+  --studio-viewport-bg: #f1f5f9;
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 22px;
   --font-brand: 'Cinzel Decorative', serif;
   --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
   --font-mono: 'DM Mono', monospace;
+}
+
+html.dark, :root.dark {
+  /* Obsidian / Amber Luxury Dark Theme */
+  --ink: #f8fafc;
+  --ink-secondary: #cbd5e1;
+  --muted: #94a3b8;
+  --subtle: #64748b;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --paper: #07090e;
+  --paper-gradient-start: rgba(245, 158, 11, 0.08);
+  --paper-gradient-mid: rgba(16, 185, 129, 0.04);
+  --card: #0e121a;
+  --card-hover: #141a24;
+  --primary: #f59e0b;
+  --primary-hover: #d97706;
+  --primary-glow: rgba(245, 158, 11, 0.22);
+  --primary-fg: #07090e;
+  --emerald: #10b981;
+  --emerald-glow: rgba(16, 185, 129, 0.22);
+  --red: #f43f5e;
+  --glass-bg: rgba(12, 15, 23, 0.88);
+  --glass-border: rgba(245, 158, 11, 0.35);
+  --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 28px rgba(245, 158, 11, 0.15);
+  --backdrop-bg: rgba(0, 0, 0, 0.55);
+  --input-bg: rgba(6, 9, 14, 0.75);
+  --pill-bg: rgba(255, 255, 255, 0.04);
+  --pill-border: rgba(255, 255, 255, 0.09);
+  --h1-gradient: linear-gradient(180deg, #ffffff 30%, #cbd5e1 100%);
+  --studio-viewport-bg: #06080c;
 }
 
 * {
@@ -69,8 +115,8 @@ button {
   display: flex;
   flex-direction: column;
   position: relative;
-  background: radial-gradient(circle at 50% -20%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
-              radial-gradient(circle at 100% 50%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
+  background: radial-gradient(circle at 50% -20%, var(--paper-gradient-start) 0%, transparent 60%),
+              radial-gradient(circle at 100% 50%, var(--paper-gradient-mid) 0%, transparent 50%),
               var(--paper);
 }
 
@@ -80,7 +126,7 @@ button {
   display: flex;
   justify-content: space-between;
   padding: 18px 5vw;
-  background: rgba(7, 9, 14, 0.75);
+  background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   position: sticky;
@@ -152,7 +198,7 @@ h1 {
   line-height: 1.05;
   margin: 8px 0 14px;
   font-weight: 800;
-  background: linear-gradient(180deg, #ffffff 30%, #cbd5e1 100%);
+  background: var(--h1-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -282,14 +328,15 @@ h2 {
 }
 
 .modal {
-  background: linear-gradient(180deg, rgba(20, 24, 34, 0.95) 0%, rgba(12, 15, 22, 0.98) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   max-width: 580px;
   padding: 32px;
   position: relative;
   width: 100%;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 40px rgba(245, 158, 11, 0.12);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), 0 0 40px var(--primary-glow);
 }
 
 .modal h2 {
@@ -352,8 +399,8 @@ h2 {
   margin: 18px 0;
 }
 .guide-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--card-hover);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-size: 12px;
@@ -392,7 +439,7 @@ h2 {
   justify-content: space-between;
   height: 56px;
   padding: 0 20px;
-  background: rgba(14, 18, 26, 0.85);
+  background: var(--glass-bg);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -435,7 +482,7 @@ h2 {
   height: 100%;
   position: relative;
   overflow: hidden;
-  background: #06080c;
+  background: var(--studio-viewport-bg);
 }
 
 .studio-viewport-container .viewer3d {
@@ -445,7 +492,7 @@ h2 {
   height: 100%;
   min-height: 0;
   border-radius: 0;
-  background: #06080c;
+  background: var(--studio-viewport-bg);
 }
 
 .studio-sidebar {
@@ -453,7 +500,7 @@ h2 {
   height: 100%;
   flex-shrink: 0;
   overflow-y: auto;
-  background: rgba(14, 18, 26, 0.95);
+  background: var(--card);
   border-left: 1px solid var(--line);
   padding: 18px;
   display: flex;
@@ -467,7 +514,7 @@ h2 {
 .popover-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--backdrop-bg);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 48;
@@ -477,18 +524,19 @@ h2 {
   width: 44px;
   height: 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--line-strong);
   margin: 0 auto 4px auto;
   cursor: pointer;
   display: block;
 }
 
 .water-glass-popover {
-  background: rgba(12, 15, 23, 0.88);
+  background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 28px rgba(245, 158, 11, 0.15);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  color: var(--ink);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   position: absolute;
@@ -538,8 +586,8 @@ h2 {
 }
 
 .suggestion-pill {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: var(--pill-bg);
+  border: 1px solid var(--pill-border);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   font-size: 12px;
@@ -552,16 +600,16 @@ h2 {
   gap: 8px;
 }
 .suggestion-pill:hover {
-  background: rgba(245, 158, 11, 0.12);
-  border-color: rgba(245, 158, 11, 0.45);
-  color: #fff;
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--ink);
   transform: translateY(-1px);
 }
 
 /* 3D Viewer HUD Controls */
 .viewer-hud {
   align-items: center;
-  background: rgba(12, 16, 24, 0.82);
+  background: var(--glass-bg);
   border: 1px solid var(--line);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -574,11 +622,13 @@ h2 {
   padding: 8px 14px;
   position: absolute;
   z-index: 20;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--glass-shadow);
+  color: var(--ink);
 }
 
 .viewer-hud button {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--card-hover);
+  color: var(--ink);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   color: var(--muted);

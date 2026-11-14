@@ -144,7 +144,7 @@ export default function FloatingEditBar({
             <span>Restage:</span>
             <span
               style={{
-                color: "#fff",
+                color: "var(--ink)",
                 background: "rgba(245, 158, 11, 0.18)",
                 border: "1px solid rgba(245, 158, 11, 0.35)",
                 padding: "2px 8px",
@@ -162,9 +162,9 @@ export default function FloatingEditBar({
             aria-label="Close editor"
             className="popover-close-btn"
             style={{
-              color: "#fbbf24",
+              color: "var(--primary)",
               background: "rgba(245, 158, 11, 0.12)",
-              border: "1px solid rgba(245, 158, 11, 0.3)",
+              border: "1px solid var(--glass-border)",
               padding: "4px 10px",
               display: "flex",
               alignItems: "center",
@@ -197,7 +197,7 @@ export default function FloatingEditBar({
             >
               <span style={{ fontSize: "16px" }}>{s.icon}</span>
               <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                <strong style={{ fontSize: "12px", color: "#f8fafc" }}>{s.label}</strong>
+                <strong style={{ fontSize: "12px", color: "var(--ink)" }}>{s.label}</strong>
                 <span style={{ fontSize: "10px", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {s.prompt}
                 </span>
@@ -225,11 +225,11 @@ export default function FloatingEditBar({
           disabled={busy}
           style={{
             flex: 1,
-            background: "rgba(6, 9, 14, 0.75)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
+            background: "var(--input-bg)",
+            border: "1px solid var(--line)",
             borderRadius: "10px",
             padding: "10px 14px",
-            color: "#f8fafc",
+            color: "var(--ink)",
             fontSize: "13px",
             outline: "none",
             transition: "border-color 0.2s",
@@ -267,10 +267,10 @@ export default function FloatingEditBar({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "rgba(255, 255, 255, 0.02)",
+          background: "var(--card-hover)",
           padding: "6px 10px",
           borderRadius: "8px",
-          border: "1px solid rgba(255, 255, 255, 0.05)",
+          border: "1px solid var(--line)",
           fontSize: "11px",
         }}
       >
@@ -281,9 +281,9 @@ export default function FloatingEditBar({
             onChange={(e) => setModel(e.target.value as DiffusionModelVariant)}
             disabled={busy}
             style={{
-              background: "#080b10",
+              background: "var(--card)",
               color: "var(--primary)",
-              border: "1px solid rgba(255, 255, 255, 0.12)",
+              border: "1px solid var(--line)",
               borderRadius: "6px",
               padding: "2px 8px",
               fontSize: "11px",
@@ -345,7 +345,7 @@ export default function FloatingEditBar({
                 type="button"
                 onClick={() => onSelectVersion?.(v.id)}
                 style={{
-                  background: active ? "rgba(245, 158, 11, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                  background: active ? "rgba(245, 158, 11, 0.2)" : "var(--card-hover)",
                   borderColor: active ? "var(--primary)" : "var(--line)",
                   borderWidth: "1px",
                   borderStyle: "solid",
