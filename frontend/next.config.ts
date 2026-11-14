@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "top-right",
   },
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", "*.trycloudflare.com"],
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${backendOrigin}/api/:path*` }];
   },

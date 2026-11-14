@@ -449,6 +449,55 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         });
       }
 
+      // 6. Pillows & Cushions
+      if (targetName.includes("Pillow") || targetName.includes("Cushion")) {
+        let colorHex = 0xf59e0b;
+        if (p.includes("green")) colorHex = 0x2d6a4f;
+        else if (p.includes("cream") || p.includes("white")) colorHex = 0xf4efe6;
+        else if (p.includes("black")) colorHex = 0x18181b;
+        scene.traverse((child) => {
+          const m = child as THREE.Mesh;
+          if (m.isMesh && m.name.toLowerCase().includes("pillow")) {
+            if (m.material && "color" in m.material) {
+              (m.material as THREE.MeshStandardMaterial).color.setHex(colorHex);
+              (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+            }
+          }
+        });
+      }
+
+      // 7. Point Cloud Splats Color Shift (Living Room / Point Cloud Scene)
+      scene.traverse((child) => {
+        if ((child as THREE.Points).isPoints) {
+          const pts = child as THREE.Points;
+          const colors = pts.geometry?.attributes?.color;
+          if (colors) {
+            let rTint = 1.0, gTint = 1.0, bTint = 1.0;
+            if (p.includes("green") || p.includes("emerald") || p.includes("japandi") || p.includes("sage")) {
+              rTint = 0.7; gTint = 1.25; bTint = 0.85;
+            } else if (p.includes("gold") || p.includes("warm") || p.includes("italian") || p.includes("amber")) {
+              rTint = 1.35; gTint = 1.1; bTint = 0.65;
+            } else if (p.includes("dark") || p.includes("industrial") || p.includes("charcoal") || p.includes("black")) {
+              rTint = 0.65; gTint = 0.65; bTint = 0.65;
+            } else if (p.includes("blue") || p.includes("nordic") || p.includes("midnight")) {
+              rTint = 0.75; gTint = 0.95; bTint = 1.35;
+            }
+            const arr = colors.array as Float32Array;
+            for (let i = 0; i < arr.length; i += 3) {
+              const r = arr[i];
+              const g = arr[i + 1];
+              const b = arr[i + 2];
+              if (r !== undefined && g !== undefined && b !== undefined) {
+                arr[i] = Math.min(1.0, r * rTint);
+                arr[i + 1] = Math.min(1.0, g * gTint);
+                arr[i + 2] = Math.min(1.0, b * bTint);
+              }
+            }
+            colors.needsUpdate = true;
+          }
+        }
+      });
+
       return true;
     },
   });
@@ -510,10 +559,10 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
     };
     orbit.minAzimuthAngle = -Infinity;
     orbit.maxAzimuthAngle = Infinity;
-    orbit.minPolarAngle = isMeshRoom ? 0.05 : 0;
-    orbit.maxPolarAngle = isMeshRoom ? Math.PI / 2 - 0.02 : Math.PI;
-    orbit.minDistance = isMeshRoom ? 0.15 : 0.05;
-    orbit.maxDistance = isMeshRoom ? 2.6 : 500.0;
+    orbit.minPolarAngle = 0.05;
+    orbit.maxPolarAngle = Math.PI / 2 + 0.04;
+    orbit.minDistance = 0.25;
+    orbit.maxDistance = isMeshRoom ? 3.5 : 4.5;
     orbit.enabled = modeRef.current === "orbit";
 
     sceneRef.current = scene;
@@ -754,11 +803,14 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         orbit.update();
       }
 
-      if (isMeshRoom) {
-        camera.position.x = Math.max(-2.55, Math.min(2.55, camera.position.x));
-        camera.position.z = Math.max(-2.55, Math.min(2.55, camera.position.z));
-        camera.position.y = Math.max(0.35, Math.min(2.35, camera.position.y));
-      }
+      // Strict boundary enforcement: keep camera and target safely inside the room
+      orbit.target.x = Math.max(-2.5, Math.min(2.5, orbit.target.x));
+      orbit.target.z = Math.max(-2.5, Math.min(2.5, orbit.target.z));
+      orbit.target.y = Math.max(0.1, Math.min(1.8, orbit.target.y));
+
+      camera.position.x = Math.max(-3.5, Math.min(3.5, camera.position.x));
+      camera.position.z = Math.max(-3.5, Math.min(3.5, camera.position.z));
+      camera.position.y = Math.max(0.2, Math.min(2.8, camera.position.y));
 
       renderer.render(scene, camera);
       frameCount += 1;
@@ -804,10 +856,10 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
               const maxDim = Math.max(size.x, size.y, size.z);
               if (Number.isFinite(maxDim) && maxDim > 0) {
                 orbit.target.copy(center);
-                camera.position.set(center.x, center.y + maxDim * 0.4, center.z + maxDim * 1.2);
+                camera.position.set(center.x, center.y + Math.min(1.2, maxDim * 0.4), center.z + Math.min(2.2, maxDim * 1.0));
                 camera.lookAt(center);
-                orbit.minDistance = Math.max(0.05, maxDim * 0.05);
-                orbit.maxDistance = Math.max(10, maxDim * 4);
+                orbit.minDistance = 0.25;
+                orbit.maxDistance = Math.min(4.8, Math.max(2.8, maxDim * 1.4));
                 orbit.update();
               }
             }
@@ -948,6 +1000,36 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
           {hintMessage}
         </div>
       ) : null}
+
+      <button
+        type="button"
+        onClick={reset}
+        className="floating-reset-camera-btn"
+        title="Reset camera to center view"
+        style={{
+          position: "absolute",
+          top: "14px",
+          right: "14px",
+          zIndex: 12,
+          background: "rgba(15, 23, 42, 0.88)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          border: "1px solid rgba(245, 158, 11, 0.45)",
+          borderRadius: "999px",
+          padding: "7px 14px",
+          color: "#fbbf24",
+          fontSize: "12px",
+          fontWeight: 700,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.4)",
+        }}
+      >
+        <span style={{ fontSize: "14px" }}>🎯</span>
+        <span>Center View</span>
+      </button>
       <div className="viewer-hud">
         <div className="viewer-modes">
           <button

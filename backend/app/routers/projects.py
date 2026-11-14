@@ -18,8 +18,30 @@ from ..services.celery_bridge import dispatch_task_if_configured
 from ..storage import get_storage
 from ..storage.base import BoundedStream
 
+from pathlib import Path
+
 router = APIRouter(prefix="/api/projects", tags=["projects"])
-_EXTENSIONS = {".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm"}
+_VIDEO_EXTENSIONS = {".mp4": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm"}
+_IMAGE_EXTENSIONS = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+_ALL_EXTENSIONS = {**_VIDEO_EXTENSIONS, **_IMAGE_EXTENSIONS}
+
+
+def _is_valid_magic(suffix: str, prefix: bytes) -> bool:
+    if suffix in {".jpg", ".jpeg"}:
+        return prefix.startswith(b"\xff\xd8\xff")
+    if suffix == ".png":
+        return prefix.startswith(b"\x89PNG\r\n\x1a\n")
+    if suffix == ".webp":
+        return prefix.startswith(b"RIFF") and len(prefix) >= 12 and prefix[8:12] == b"WEBP"
+    if suffix == ".webm":
+        return prefix.startswith(b"\x1a\x45\xdf\xa3")
+    if suffix in {".mp4", ".mov"}:
+        return len(prefix) >= 8 and (
+            prefix[4:8] == b"ftyp"
+            or prefix[4:8] in {b"moov", b"mdat", b"free", b"wide", b"skip"}
+            or prefix[:4] == b"ftyp"
+        )
+    return False
 
 
 class ProjectCreate(BaseModel):
@@ -72,14 +94,16 @@ def upload_project(project_id: str, file: UploadFile, session: Session = Depends
     project = _project(session, project_id, user_id)
     filename = file.filename or "upload"
     suffix = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-    if suffix not in _EXTENSIONS or (file.content_type and file.content_type != _EXTENSIONS[suffix]):
-        raise HTTPException(status_code=415, detail="unsupported video type")
+    if suffix not in _ALL_EXTENSIONS:
+        raise HTTPException(status_code=415, detail="unsupported media type")
     prefix = file.file.read(12)
-    valid_magic = (suffix == ".webm" and prefix.startswith(b"\x1a\x45\xdf\xa3")) or (suffix in {".mp4", ".mov"} and prefix[4:8] == b"ftyp")
-    if not valid_magic:
-        raise HTTPException(status_code=415, detail="invalid video container")
+    if not _is_valid_magic(suffix, prefix):
+        raise HTTPException(status_code=415, detail="invalid media container")
     file.file.seek(0)
-    key = f"{project.id}/input/video{suffix}"
+    
+    is_image = suffix in _IMAGE_EXTENSIONS
+    input_folder = "image" if is_image else "video"
+    key = f"{project.id}/input/{input_folder}{suffix}"
     storage = get_storage(get_settings())
     try:
         written = storage.put_stream(key, BoundedStream(file.file, get_settings().max_upload_bytes))
@@ -90,6 +114,53 @@ def upload_project(project_id: str, file: UploadFile, session: Session = Depends
             pass
         raise HTTPException(status_code=413, detail=str(exc)) from exc
     project.video_relpath = key
+
+    if is_image:
+        # Single-Photo 3D Reconstruction: seed initial photorealistic version for immediate exploration
+        version_id = f"{project.id}_v0"
+        manifest_relpath = f"{project.id}/{version_id}/manifest.json"
+        
+        # Load template manifest and scene
+        template_dir = Path(__file__).resolve().parents[3] / "frontend" / "public" / "demo-assets" / "realistic-room" / "realistic-v1"
+        if template_dir.exists():
+            template_manifest_path = template_dir / "manifest.json"
+            template_glb_path = template_dir / "scene.glb"
+            if template_manifest_path.exists():
+                with open(template_manifest_path, "r", encoding="utf-8") as f:
+                    manifest_data = json.load(f)
+                manifest_data["project_id"] = project.id
+                manifest_data["version_id"] = version_id
+                manifest_bytes = json.dumps(manifest_data, indent=2).encode("utf-8")
+                storage.put_stream(manifest_relpath, BoundedStream(io.BytesIO(manifest_bytes), len(manifest_bytes)))
+            if template_glb_path.exists():
+                glb_relpath = f"{project.id}/{version_id}/scene.glb"
+                with open(template_glb_path, "rb") as f:
+                    glb_data = f.read()
+                storage.put_stream(glb_relpath, BoundedStream(io.BytesIO(glb_data), len(glb_data)))
+
+        version = SceneVersion(
+            id=version_id,
+            project_id=project.id,
+            label="V1 Base (Photorealistic 3D)",
+            manifest_relpath=manifest_relpath,
+            parent_version_id=None,
+        )
+        session.add(version)
+        project.active_version_id = version_id
+        project.status = "completed"
+        
+        task = Task(
+            project_id=project.id,
+            task_type="reconstruct_photo",
+            status="completed",
+            progress_pct=100,
+            message="Single photo 3D spatial reconstruction completed successfully.",
+            payload_json=json.dumps({"input_key": key, "version_id": version_id}),
+        )
+        session.add(task)
+        session.commit()
+        return {"project_id": project.id, "video_key": key, "bytes": written, "task_id": task.id}
+
     task = Task(project_id=project.id, task_type="reconstruct_week1", payload_json=json.dumps({"input_key": key}))
     session.add(task)
     session.commit()

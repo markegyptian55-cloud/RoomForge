@@ -463,9 +463,28 @@ h2 {
   -webkit-backdrop-filter: blur(16px);
 }
 
-/* Glassmorphic 4-Choice AI Popover */
+/* Glassmorphic 4-Choice AI Popover & Bottom Sheet */
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 48;
+}
+
+.sheet-drag-handle {
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  margin: 0 auto 4px auto;
+  cursor: pointer;
+  display: block;
+}
+
 .water-glass-popover {
-  background: rgba(12, 15, 23, 0.78);
+  background: rgba(12, 15, 23, 0.88);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(245, 158, 11, 0.35);
@@ -592,12 +611,32 @@ h2 {
     border-top: 1px solid var(--line);
   }
   .water-glass-popover {
-    width: calc(100vw - 20px);
-    bottom: 12px;
-    padding: 14px;
+    position: fixed;
+    width: 100vw;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    max-height: 48vh;
+    max-height: 48dvh;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    border-bottom: none;
+    padding: 12px 16px 24px;
+    z-index: 50;
+    animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes sheetSlideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
   }
   .suggestion-pills-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
   }
   .guide-grid {
     grid-template-columns: 1fr;

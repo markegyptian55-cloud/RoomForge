@@ -320,9 +320,44 @@ export default function HomePage() {
                     ? "video/mp4,video/quicktime,video/webm"
                     : "image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
                 }
+                capture="environment"
                 onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               />
             </label>
+
+            {/* Direct Mobile & Laptop Camera Capture Action */}
+            <div style={{ marginTop: "10px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "10px 16px",
+                  background: "rgba(245, 158, 11, 0.14)",
+                  border: "1px solid rgba(245, 158, 11, 0.4)",
+                  borderRadius: "8px",
+                  color: "#fbbf24",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.2s",
+                }}
+              >
+                <Camera size={16} />
+                <span>{uploadMode === "video" ? "🎥 Record Room with Camera" : "📸 Open Camera & Snap Room"}</span>
+                <input
+                  type="file"
+                  accept={uploadMode === "video" ? "video/*" : "image/*"}
+                  capture="environment"
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    if (event.target.files?.[0]) setFile(event.target.files[0]);
+                  }}
+                />
+              </label>
+            </div>
 
             {uploadPct !== null && (
               <div style={{ margin: "12px 0" }}>

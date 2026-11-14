@@ -40,17 +40,30 @@ async function request<T>(path: string, token: string | null, init?: RequestInit
   return body as T;
 }
 
-export function validateVideo(file: File, maxBytes = 500 * 1024 * 1024): string | null {
-  const allowed = new Set(["video/mp4", "video/quicktime", "video/webm"]);
-  if (!allowed.has(file.type)) return "Choose an MP4, QuickTime, or WebM video.";
-  if (file.size > maxBytes) return "Video must be 500 MB or smaller.";
+export function validateMedia(file: File, maxBytes = 500 * 1024 * 1024): string | null {
+  const allowedVideos = new Set(["video/mp4", "video/quicktime", "video/webm"]);
+  const allowedImages = new Set(["image/jpeg", "image/png", "image/webp"]);
+  
+  const isVideo = allowedVideos.has(file.type);
+  const isImage = allowedImages.has(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
+  
+  if (!isVideo && !isImage) {
+    return "Please choose an MP4/WebM/MOV video or a JPEG/PNG/WebP photo.";
+  }
+  if (isImage && file.size > 50 * 1024 * 1024) {
+    return "Image must be 50 MB or smaller.";
+  }
+  if (file.size > maxBytes) {
+    return "File must be 500 MB or smaller.";
+  }
   return null;
 }
 
-const DEFAULT_API_BASE =
-  typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
-    ? (process.env.NEXT_PUBLIC_API_URL || "https://cuddly-terms-matter.loca.lt")
-    : "";
+export function validateVideo(file: File, maxBytes = 500 * 1024 * 1024): string | null {
+  return validateMedia(file, maxBytes);
+}
+
+const DEFAULT_API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export class RoomApi {
   private token: string | null = null;

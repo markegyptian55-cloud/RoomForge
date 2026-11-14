@@ -35,30 +35,17 @@ interface StyleSuggestion {
 function getCuratedSuggestions(objectName: string): StyleSuggestion[] {
   const name = objectName.toLowerCase();
 
-  if (name.includes("sofa") || name.includes("cushion") || name.includes("chair") || name.includes("couch")) {
+  // 1. Small tabletop & decor items (highest specificity)
+  if (name.includes("mug") || name.includes("cup") || name.includes("vase") || name.includes("pot") || name.includes("bowl")) {
     return [
-      { icon: "🛋️", label: "Emerald Velvet", prompt: "Luxurious deep emerald green velvet with brass piping" },
-      { icon: "🤎", label: "Cognac Leather", prompt: "Vintage hand-distressed Italian cognac leather" },
-      { icon: "☁️", label: "Nordic Bouclé", prompt: "Minimalist Scandinavian cream bouclé fabric" },
-      { icon: "🖤", label: "Matte Charcoal", prompt: "Modern architectural matte charcoal textured weave" },
+      { icon: "🏺", label: "Terracotta Vase", prompt: "Organic handcrafted raw terracotta ceramic vase" },
+      { icon: "✨", label: "Amber Fluted Glass", prompt: "Hand-blown fluted amber glass with golden reflections" },
+      { icon: "☕", label: "Sage Ceramic Mug", prompt: "Artisanal speckled matte sage green stoneware mug" },
+      { icon: "🖤", label: "Obsidian Stoneware", prompt: "Architectural matte black volcanic stone vessel" },
     ];
   }
-  if (name.includes("wall") || name.includes("backdrop")) {
-    return [
-      { icon: "🌿", label: "Sage Wood Slats", prompt: "Deep sage green accent wall with vertical oak acoustic slats" },
-      { icon: "🏛️", label: "Venetian Plaster", prompt: "Textured warm beige Venetian limewash plaster" },
-      { icon: "🧱", label: "Exposed Brick", prompt: "Rustic industrial exposed loft brick wall with warm mortar" },
-      { icon: "🌌", label: "Midnight Blue", prompt: "Dramatic matte midnight blue accent wall with brass moldings" },
-    ];
-  }
-  if (name.includes("table") || name.includes("desk") || name.includes("surface")) {
-    return [
-      { icon: "🪵", label: "Live-Edge Walnut", prompt: "Solid organic live-edge American walnut wood" },
-      { icon: "✨", label: "Calacatta Marble", prompt: "Polished Italian Calacatta gold marble with amber veining" },
-      { icon: "🪨", label: "Brutalist Concrete", prompt: "Smooth hand-cast brutalist architectural concrete" },
-      { icon: "🪞", label: "Smoked Glass", prompt: "Tempered smoked bronze glass with satin brass frame" },
-    ];
-  }
+
+  // 2. Wall-mounted Art & Canvas (specific over raw walls)
   if (name.includes("canvas") || name.includes("art") || name.includes("frame") || name.includes("painting")) {
     return [
       { icon: "🎨", label: "Abstract Oil", prompt: "Large vibrant abstract expressionist canvas with textured impasto" },
@@ -67,14 +54,37 @@ function getCuratedSuggestions(objectName: string): StyleSuggestion[] {
       { icon: "🖤", label: "Monochrome Ink", prompt: "Minimalist Japanese sumi-e monochrome line drawing" },
     ];
   }
-  if (name.includes("mug") || name.includes("cup") || name.includes("vase") || name.includes("pot")) {
+
+  // 3. Sofas & Seating
+  if (name.includes("sofa") || name.includes("cushion") || name.includes("chair") || name.includes("couch") || name.includes("pillow")) {
     return [
-      { icon: "🏺", label: "Terracotta Vase", prompt: "Organic handcrafted raw terracotta ceramic vase" },
-      { icon: "✨", label: "Amber Fluted Glass", prompt: "Hand-blown fluted amber glass with golden reflections" },
-      { icon: "☕", label: "Sage Ceramic Mug", prompt: "Artisanal speckled matte sage green stoneware mug" },
-      { icon: "🖤", label: "Obsidian Stoneware", prompt: "Architectural matte black volcanic stone vessel" },
+      { icon: "🛋️", label: "Emerald Velvet", prompt: "Luxurious deep emerald green velvet with brass piping" },
+      { icon: "🤎", label: "Cognac Leather", prompt: "Vintage hand-distressed Italian cognac leather" },
+      { icon: "☁️", label: "Nordic Bouclé", prompt: "Minimalist Scandinavian cream bouclé fabric" },
+      { icon: "🖤", label: "Matte Charcoal", prompt: "Modern architectural matte charcoal textured weave" },
     ];
   }
+
+  // 4. Tables & Desks
+  if (name.includes("table") || name.includes("desk") || name.includes("surface") || name.includes("stand")) {
+    return [
+      { icon: "🪵", label: "Live-Edge Walnut", prompt: "Solid organic live-edge American walnut wood" },
+      { icon: "✨", label: "Calacatta Marble", prompt: "Polished Italian Calacatta gold marble with amber veining" },
+      { icon: "🪨", label: "Brutalist Concrete", prompt: "Smooth hand-cast brutalist architectural concrete" },
+      { icon: "🪞", label: "Smoked Glass", prompt: "Tempered smoked bronze glass with satin brass frame" },
+    ];
+  }
+
+  // 5. Walls & Architectural Backdrops
+  if (name.includes("wall") || name.includes("backdrop") || name.includes("partition")) {
+    return [
+      { icon: "🌿", label: "Sage Wood Slats", prompt: "Deep sage green accent wall with vertical oak acoustic slats" },
+      { icon: "🏛️", label: "Venetian Plaster", prompt: "Textured warm beige Venetian limewash plaster" },
+      { icon: "🧱", label: "Exposed Brick", prompt: "Rustic industrial exposed loft brick wall with warm mortar" },
+      { icon: "🌌", label: "Midnight Blue", prompt: "Dramatic matte midnight blue accent wall with brass moldings" },
+    ];
+  }
+
   return [
     { icon: "✨", label: "Nordic Minimalist", prompt: "Light Scandinavian minimalist design with natural oak" },
     { icon: "🌿", label: "Japandi Organic", prompt: "Japandi aesthetic with wabi-sabi organic textures" },
@@ -119,43 +129,56 @@ export default function FloatingEditBar({
   };
 
   return (
-    <div className="water-glass-popover" role="dialog" aria-label="AI Generative 3D Editor">
-      {/* Popover Header */}
-      <div className="popover-header">
-        <div className="popover-title">
-          <Sparkles size={16} />
-          <span>Restage Selected Object:</span>
-          <span
+    <>
+      {/* Tap anywhere outside to dismiss */}
+      <div className="popover-backdrop" onClick={onClose} aria-hidden="true" />
+
+      <div className="water-glass-popover" role="dialog" aria-label="AI Generative 3D Editor">
+        {/* Mobile Drag / Pull Indicator */}
+        <div className="sheet-drag-handle" onClick={onClose} title="Tap to close" />
+
+        {/* Popover Header with prominent, easy-to-tap close button */}
+        <div className="popover-header">
+          <div className="popover-title">
+            <Sparkles size={16} />
+            <span>Restage:</span>
+            <span
+              style={{
+                color: "#fff",
+                background: "rgba(245, 158, 11, 0.18)",
+                border: "1px solid rgba(245, 158, 11, 0.35)",
+                padding: "2px 8px",
+                borderRadius: "6px",
+                fontSize: "12px",
+                fontWeight: 700,
+              }}
+            >
+              {selectedObject}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close editor"
+            className="popover-close-btn"
             style={{
-              color: "#fff",
-              background: "rgba(245, 158, 11, 0.18)",
-              border: "1px solid rgba(245, 158, 11, 0.35)",
-              padding: "2px 8px",
-              borderRadius: "6px",
+              color: "#fbbf24",
+              background: "rgba(245, 158, 11, 0.12)",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+              padding: "4px 10px",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              borderRadius: "8px",
               fontSize: "12px",
               fontWeight: 700,
+              cursor: "pointer",
             }}
           >
-            {selectedObject}
-          </span>
+            <X size={16} />
+            <span>Close</span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            color: "var(--muted)",
-            padding: "4px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: "6px",
-            transition: "all 0.2s",
-          }}
-        >
-          <X size={18} />
-        </button>
-      </div>
 
       {/* 4 Smart Style Suggestion Pills (Frosted Glass / Watermark Effect) */}
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -341,6 +364,7 @@ export default function FloatingEditBar({
           })}
         </div>
       ) : null}
-    </div>
+      </div>
+    </>
   );
 }

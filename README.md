@@ -8,18 +8,20 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x_CUDA-EE4C2C?style=for-the-badge&logo=pytorch)](https://pytorch.org/)
 [![Three.js](https://img.shields.io/badge/Three.js-WebGL2_Splatting-000000?style=for-the-badge&logo=three.js)](https://threejs.org/)
 [![Local Studio](https://img.shields.io/badge/Local_Studio-http%3A%2F%2Flocalhost%3A3000-000000?style=for-the-badge&logo=next.js)](http://localhost:3000)
+[![Cloudflare Tunnel](https://img.shields.io/badge/Cloudflare_Tunnel-Live_Mobile_HTTPS-F38020?style=for-the-badge&logo=cloudflare)](https://concerning-restaurant-bonus-ebook.trycloudflare.com)
 [![Kaggle](https://img.shields.io/badge/Kaggle-Dual_Tesla_T4_GPU-20BEFF?style=for-the-badge&logo=kaggle)](https://www.kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-67_Passing_100%25-success?style=for-the-badge&logo=pytest)](worker/tests)
+[![Tests](https://img.shields.io/badge/Tests-151_Passing_100%25-success?style=for-the-badge&logo=pytest)](worker/tests)
 
 <p align="center">
-  <b>Turn casual smartphone walkthrough videos into photorealistic, browsable 3D Gaussian rooms.</b><br/>
+  <b>Turn casual smartphone walkthrough videos or single photos into photorealistic, browsable 3D rooms.</b><br/>
   Select, restage, and redesign furniture with generative AI in real time directly inside the browser.
 </p>
 
 [Live Links](#-live-deployments--links) •
 [Key Features](#-key-features) •
 [Architecture](#-system-architecture) •
+[Mobile & Desktop Controls](#-mobile--desktop-controls) •
 [Cloudflare Tunnel](#-cloudflare-tunnel-integration) •
 [Kaggle GPU Worker](#-kaggle-gpu-worker-guide) •
 [Repository Structure](#-repository-structure) •
@@ -34,9 +36,11 @@
 
 | Service | Destination | Purpose | Status |
 | :--- | :--- | :--- | :---: |
-| **Local Studio (Active)** | [http://localhost:3000](http://localhost:3000) | Interactive 3D WebGL2 browser studio | 🟢 Running Live |
+| **Mobile Live Studio** | [https://concerning-restaurant-bonus-ebook.trycloudflare.com](https://concerning-restaurant-bonus-ebook.trycloudflare.com) | Live public HTTPS tunnel for mobile & desktop | 🟢 Running Live |
+| **3D Photorealistic Suite** | [Direct Suite Link](https://concerning-restaurant-bonus-ebook.trycloudflare.com/projects/realistic-room) | Flagship photorealistic 3D room with PBR textures | 🟢 Active |
+| **3D Gaussian Demo Room** | [Direct Demo Link](https://concerning-restaurant-bonus-ebook.trycloudflare.com/projects/demo-room) | Sparse splat reconstruction with real-time tinting | 🟢 Active |
+| **Local Studio (Desktop)** | [http://localhost:3000](http://localhost:3000) | Interactive 3D WebGL2 browser studio | 🟢 Running Live |
 | **GitHub Repository** | [github.com/markegyptian55-cloud/RoomForge](https://github.com/markegyptian55-cloud/RoomForge) | Source code & continuous integration | 🟢 Active |
-| **Vercel Project Dashboard** | [vercel.com/markegyptian55-4853/roomforge](https://vercel.com/markegyptian55-4853/roomforge) | Deployment metrics & edge configuration | 🟢 Configured |
 | **Kaggle GPU Worker** | [kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker](https://www.kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker) | Free Dual Tesla T4 (30 hrs/week) pull worker | 🟢 Ready |
 
 ---

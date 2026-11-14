@@ -126,10 +126,10 @@ describe("EditStudio interactive Week 2 workflow", () => {
     await waitFor(() => expect(updateMaskSpy).toHaveBeenCalledTimes(2));
 
     fireEvent.change(screen.getByLabelText("Edit instruction prompt"), { target: { value: "emerald armchair" } });
-    fireEvent.click(screen.getByRole("button", { name: "Generate Seed Previews" }));
+    fireEvent.click(screen.getByRole("button", { name: /Preview Seeds/i }));
     await waitFor(() => expect(previewSpy).toHaveBeenCalledWith("edit-1234", "emerald armchair", [101, 202, 303], "flux2_klein_4b"));
 
-    fireEvent.click(screen.getByRole("button", { name: "Apply & Rebuild 3D Room" }));
+    fireEvent.click(screen.getByRole("button", { name: /Apply & Rebuild 3D Room/i }));
     await waitFor(() => expect(applySpy).toHaveBeenCalledWith("edit-1234", "seed_101", "masked_finetune", "emerald armchair"));
     await waitFor(() => expect(screen.getByText(/Rebuild queued for version v2/i)).toBeInTheDocument());
     expect(onRefreshProject).toHaveBeenCalled();
