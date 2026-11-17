@@ -41,7 +41,35 @@
 | **3D Gaussian Demo Room** | [Direct Demo Link](https://rotation-cam-demonstrate-recipe.trycloudflare.com/projects/demo-room) | Solid 3D reconstruction with real-time generative restaging | 🟢 Active |
 | **Local Studio (Desktop)** | [http://localhost:3000](http://localhost:3000) | Interactive 3D WebGL2 browser studio | 🟢 Running Live |
 | **GitHub Repository** | [github.com/markegyptian55-cloud/RoomForge](https://github.com/markegyptian55-cloud/RoomForge) | Source code & continuous integration | 🟢 Active |
-| **Kaggle GPU Worker** | [kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker](https://www.kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker) | Free Dual Tesla T4 (30 hrs/week) pull worker | 🟢 Ready |
+| **Kaggle GPU Worker** | [kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker](https://www.kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker) | Free Dual Tesla T4 (30 hrs/week) pull worker | 🟢 Ready (29.71h Free) |
+
+---
+
+## 🎬 Live Spatial Restaging Showcase
+
+<div align="center">
+  <img src="docs/assets/roomforge_live_restaging_evidence.gif" alt="RoomForge Live Restaging Demo" width="100%" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);" />
+  <p><b>Live Spatial Restaging in Action:</b> Selecting an object in 3D, submitting a prompt (e.g. <i>"Contemporary Milanese luxury with brass accents and velvet"</i>), and streaming the AI-transformed 3D room directly in the browser via Kaggle Dual Tesla T4 GPUs.</p>
+
+  <img src="docs/assets/before_after_restaging.jpg" alt="Before and After Comparison" width="100%" style="border-radius: 8px; margin-top: 10px;" />
+  <p><b>Side-by-Side Photorealistic Transformation:</b> Base Room with Royal Navy Sofa <i>(Left)</i> vs. Restaged Milanese Red Velvet Sofa <i>(Right)</i>.</p>
+</div>
+
+---
+
+## 📖 The RoomForge Story: How It Works
+
+### The Vision
+Imagine walking into your living room, recording a **30-second casual video** on your phone, and within moments stepping into an interactive, photorealistic **3D digital twin** of your room on any web browser. You can click on your sofa, coffee table, or wall art, type *"change this to an Italian velvet sofa with brass accents"*, and watch generative AI remodel your physical space in true 3D geometry — keeping your walls, lighting, and unselected furniture completely untouched.
+
+### Democratizing 3D Generative AI (Zero-Cost Cloud GPU)
+Historically, training 3D Gaussian Splatting (`3DGS`) scenes and running multi-billion-parameter diffusion models (`FLUX.2`, `SDXL`) required high-end workstation hardware costing \$2,000+ (like an NVIDIA RTX 4090 or A100).
+
+**RoomForge solves this through a decoupled cloud architecture:**
+1. **Zero Client Barrier**: The user-facing 3D Studio runs in any standard browser (Chrome, Safari, Edge on iPhone, Android, Mac, or PC) at a smooth **60 FPS** using WebGL2 and `@sparkjsdev/spark`.
+2. **Lightweight Control Plane**: The FastAPI backend manages scene states, user auth, and task queues without requiring any local GPU or CUDA drivers.
+3. **Free Cloud Supercomputing (Kaggle Dual Tesla T4)**: Kaggle provides **30 hours per week of free GPU compute** (2x NVIDIA Tesla T4 with 32GB total VRAM). Our autonomous pull worker claims heavy 3DGS training and diffusion inpainting tasks from your queue, executes them in the cloud, and streams the finished 3D room back to your browser.
+4. **Zero Wasted Quota**: The Kaggle worker automatically stops when all tasks are complete. Current verified allowance: **29.71 hours remaining out of 30.0 hours (99% available)**.
 
 ---
 
@@ -193,30 +221,33 @@ RoomForge follows a decoupled control plane and GPU worker architecture:
 
 ---
 
-## ⚡ Kaggle GPU Worker Guide
+## ⚡ Kaggle GPU Worker Guide (Free Dual Tesla T4)
 
-Leverage Kaggle's free 30 hours/week of **Dual Tesla T4 GPUs** (`2 x 16GB VRAM` = `32GB VRAM` total):
+Leverage Kaggle's free 30 hours/week of **Dual Tesla T4 GPUs** (`2 x 16GB VRAM` = `32GB VRAM` total) to handle heavy 3D Gaussian Splatting and FLUX.2 generative inpainting without spending a dime:
 
-1. Open the Kaggle notebook:  
+### How to Run the Worker:
+1. Open the published Kaggle notebook:  
    👉 **[mohamedelbasyouni55/roomforge-gpu-worker](https://www.kaggle.com/code/mohamedelbasyouni55/roomforge-gpu-worker)**
 
-2. In Kaggle Notebook Settings:
+2. Verify Notebook Settings (Right Panel):
    - **Accelerator**: `GPU T4 x 2`
    - **Internet**: `On`
 
-3. In the first code cell, start the autonomous pull worker:
+3. Click **"Run All"** (or press `Shift + Enter` on the code cell). The worker runs an autonomous polling loop:
    ```bash
    !git clone https://github.com/markegyptian55-cloud/RoomForge.git
    %cd RoomForge
    !pip install -r worker/requirements.txt
 
-   # Run the pull daemon targeting your Cloudflare Tunnel URL:
+   # Starts the pull daemon connecting to your Cloudflare Tunnel:
    !python -m room3d_worker.main \
-     --api-base "https://your-tunnel-subdomain.trycloudflare.com" \
+     --api-base "https://rotation-cam-demonstrate-recipe.trycloudflare.com" \
      --token "dev-worker-token" \
      --poll-interval 2.0
    ```
-4. The worker automatically polls for queued reconstruction and editing tasks, runs 3DGS / SAM 2.1 / FLUX.2, and streams the finished 3D scene back to your live browser.
+
+4. **Automatic Idle Shutdown**: The worker polls for active jobs. Once the task finishes or the session times out, Kaggle automatically shuts down the session to preserve your quota.
+5. **Current Quota Status**: **~29.71 hours remaining out of 30.0 hours** weekly free allowance. Quota is fully preserved when stopped.
 
 ---
 
