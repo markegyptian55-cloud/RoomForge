@@ -63,13 +63,13 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
           } else if (projectId === "demo-room") {
             setProject({
               id: "demo-room",
-              name: "Demo Living Room (3D Gaussian Splats)",
+              name: "Living Room (3D Gaussian Splats)",
               status: "completed",
               active_version_id: "v1",
               created_at: new Date().toISOString(),
               versions: [
-                { id: "v1", label: "V1 Base (Sparse Splats)" },
-                { id: "v2", label: "V2 Staged" },
+                { id: "v1", label: "V1 Base (Gaussian Splats)" },
+                { id: "v2", label: "V2 Staged (Warm Sand)" },
               ],
               tasks: [{ id: "t-demo", type: "reconstruct", status: "completed", progress_pct: 100 }],
               edit_sessions: [],

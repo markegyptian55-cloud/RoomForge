@@ -324,8 +324,8 @@
     "ckpt_relpath": "gs_ckpt.pt",
     "depth_dir": null,
     "collision_glb_relpath": null,
-    "scene_glb_relpath": "scene.glb",
-    "mesh_glb_relpath": "scene.glb"
+    "scene_glb_relpath": null,
+    "mesh_glb_relpath": null
   },
   "metrics": {
     "gaussian_count": 269900,

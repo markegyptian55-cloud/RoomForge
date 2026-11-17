@@ -10,14 +10,14 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 const DEMO_PROJECTS: Project[] = [
   {
     id: "realistic-room",
-    name: "Modern Luxury Suite (Photorealistic 3D)",
+    name: "Modern Luxury Suite",
     status: "completed",
     active_version_id: "realistic-v1",
     created_at: new Date().toISOString(),
   },
   {
     id: "demo-room",
-    name: "Demo Living Room (3D Gaussian Splats)",
+    name: "Living Room (3D Gaussian Splats)",
     status: "completed",
     active_version_id: "v1",
     created_at: new Date().toISOString(),
@@ -39,7 +39,16 @@ export default function HomePage() {
       .listProjects()
       .then((data) => {
         if (data && data.length > 0) {
-          setProjects(data);
+          // Filter out synthetic / E2E automated test artifacts
+          const realUserProjects = data.filter(
+            (p) =>
+              p.id !== "realistic-room" &&
+              p.id !== "demo-room" &&
+              !p.name.toLowerCase().includes("e2e") &&
+              !p.name.toLowerCase().includes("synthetic") &&
+              !p.name.toLowerCase().includes("test")
+          );
+          setProjects([...DEMO_PROJECTS, ...realUserProjects]);
         } else {
           setProjects(DEMO_PROJECTS);
         }
@@ -127,9 +136,10 @@ export default function HomePage() {
 
         <div className="project-grid">
           {projects
-            .sort((a, b) => (a.id === "realistic-room" ? -1 : b.id === "realistic-room" ? 1 : 0))
+            .sort((a, b) => (a.id === "realistic-room" ? -1 : a.id === "demo-room" ? (b.id === "realistic-room" ? 1 : -1) : 1))
             .map((project) => {
               const isRealistic = project.id === "realistic-room";
+              const isSplatDemo = project.id === "demo-room";
               return (
                 <Link
                   className="project-card"
@@ -138,13 +148,20 @@ export default function HomePage() {
                   style={
                     isRealistic
                       ? {
-                          borderColor: "rgba(245, 158, 11, 0.4)",
-                          boxShadow: "0 10px 30px rgba(245, 158, 11, 0.12)",
+                          borderColor: "rgba(245, 158, 11, 0.5)",
+                          background: "linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.8) 100%)",
+                          boxShadow: "0 10px 30px rgba(245, 158, 11, 0.15)",
                         }
-                      : undefined
+                      : isSplatDemo
+                        ? {
+                            borderColor: "rgba(45, 212, 191, 0.5)",
+                            background: "linear-gradient(135deg, rgba(45, 212, 191, 0.08) 0%, rgba(15, 23, 42, 0.8) 100%)",
+                            boxShadow: "0 10px 30px rgba(45, 212, 191, 0.15)",
+                          }
+                        : undefined
                   }
                 >
-                  <div className="card-mark">
+                  <div className="card-mark" style={isRealistic ? { color: "#fbbf24" } : isSplatDemo ? { color: "#2dd4bf" } : undefined}>
                     {isRealistic ? <Sparkles size={24} /> : <Film size={24} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -153,17 +170,32 @@ export default function HomePage() {
                       {isRealistic ? (
                         <span
                           style={{
-                            background: "rgba(245, 158, 11, 0.15)",
+                            background: "rgba(245, 158, 11, 0.18)",
                             color: "#fbbf24",
                             fontSize: "10px",
                             fontWeight: 700,
                             padding: "2px 8px",
                             borderRadius: "999px",
-                            border: "1px solid rgba(245, 158, 11, 0.3)",
-                            letterSpacing: "0.06em",
+                            border: "1px solid rgba(245, 158, 11, 0.4)",
+                            letterSpacing: "0.05em",
                           }}
                         >
-                          PHOTOREALISTIC 3D
+                          👑 PHOTOREALISTIC 3D MESH
+                        </span>
+                      ) : isSplatDemo ? (
+                        <span
+                          style={{
+                            background: "rgba(45, 212, 191, 0.18)",
+                            color: "#2dd4bf",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: "999px",
+                            border: "1px solid rgba(45, 212, 191, 0.4)",
+                            letterSpacing: "0.05em",
+                          }}
+                        >
+                          🪐 3D GAUSSIAN SPLATS
                         </span>
                       ) : (
                         <span
@@ -176,17 +208,19 @@ export default function HomePage() {
                             borderRadius: "999px",
                           }}
                         >
-                          POINT CLOUD
+                          CUSTOM ROOM
                         </span>
                       )}
                     </div>
-                    <p style={{ color: "var(--muted)", fontSize: "12px", marginTop: "6px" }}>
+                    <p style={{ color: "var(--muted)", fontSize: "12px", marginTop: "6px", lineHeight: "1.5" }}>
                       {isRealistic
-                        ? "Interactive solid 3D room with velvet sofa, walnut table, coffee mug & art"
-                        : "High-density radiance Gaussian splat points with 360° orbital walkthrough"}
+                        ? "Solid architectural 3D interior with PBR oak parquet, velvet sectional, walnut coffee table, ceramic mug, and live AI restaging."
+                        : isSplatDemo
+                          ? "Radiance Gaussian cloud with 269,900 colorful splats (حبيبات الرمل) with full 360° orbital walkthrough & furniture restaging."
+                          : "User-uploaded spatial room walkthrough with interactive 3D navigation."}
                     </p>
                   </div>
-                  <ArrowUpRight size={20} color="var(--primary)" />
+                  <ArrowUpRight size={20} color={isRealistic ? "#fbbf24" : isSplatDemo ? "#2dd4bf" : "var(--primary)"} />
                 </Link>
               );
             })}
