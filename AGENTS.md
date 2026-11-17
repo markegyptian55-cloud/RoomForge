@@ -31,3 +31,14 @@ You are writing production code for a commercial **Video to a Browsable 3D Room*
 
 ## 5. Local Verification Standard
 - Every slice must ship automated tests runnable locally on CPU + `GTX 1660 SUPER 6GB` without requiring Kaggle GPU or Docker (use synthetic `PyAV` MP4 fixtures, mocked CV tensors, and headless Playwright with SwiftShader WebGL flags).
+
+
+## 6. Autonomous Skill Selection Protocol
+Before executing any user task, the agent MUST execute these steps:
+1. Identify the task domain (Frontend, Backend, Security, Review, 3D, Planning).
+2. Query the local skills inventory located at:
+   `C:\Users\marke\.agents\skills\`
+3. Explicitly declare the selected skills at the start of the response with rationale.
+4. Execute strictly within the chosen skills' guidelines:
+   - For web/frontend tasks: Invoke `modern-web-guidance search` to verify modern Web APIs.
+   - For code review/git diff tasks: Invoke `ocr review` for line-level hybrid review.
