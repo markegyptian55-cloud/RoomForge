@@ -118,21 +118,40 @@ def build_room_scene(sofa_color: list[int]) -> trimesh.Scene:
     scene.add_geometry(frame, node_name="art_frame")
     scene.add_geometry(canvas, node_name="art_canvas")
 
-    # 13. Corner Potted Plant (Fiddle Leaf Fig)
-    pot = _make_cylinder(0.24, 0.45, (-2.4, 0.225, 2.45), [195, 95, 62, 255], "Terracotta Planter")
-    soil = _make_cylinder(0.23, 0.04, (-2.4, 0.43, 2.45), [65, 45, 30, 255], "Plant Soil")
+    # 13. Corner Potted Plant (Luxury Architectural Ficus)
+    pot = _make_cylinder(0.26, 0.48, (-2.4, 0.24, 2.45), [195, 95, 62, 255], "Terracotta Planter")
+    soil = _make_cylinder(0.25, 0.04, (-2.4, 0.46, 2.45), [55, 38, 26, 255], "Plant Soil")
+    trunk = _make_cylinder(0.038, 1.35, (-2.4, 0.95, 2.45), [110, 75, 50, 255], "Plant Trunk")
     scene.add_geometry(pot, node_name="plant_pot")
     scene.add_geometry(soil, node_name="plant_soil")
-    # Natural multi-layered architectural plant foliage
-    leaf_clusters = [
-        ((0.55, 0.28, 0.55), (-2.4, 0.72, 2.45), [28, 115, 52, 255]),
-        ((0.68, 0.32, 0.62), (-2.4, 0.98, 2.45), [34, 130, 60, 255]),
-        ((0.58, 0.35, 0.58), (-2.38, 1.25, 2.42), [42, 145, 68, 255]),
-        ((0.42, 0.25, 0.42), (-2.42, 1.50, 2.46), [48, 160, 75, 255]),
-    ]
-    for idx, (ext, pos, col) in enumerate(leaf_clusters):
-        l_mesh = _make_box(ext, pos, col, f"Plant Leaves {idx}")
-        scene.add_geometry(l_mesh, node_name=f"plant_leaves_{idx}")
+    scene.add_geometry(trunk, node_name="plant_trunk")
+
+    # Organic sculpted botanical foliage using golden-ratio phyllotaxis clusters
+    golden_angle = 2.39996
+    num_clusters = 14
+    for idx in range(num_clusters):
+        t = idx / float(num_clusters)
+        ang = idx * golden_angle
+        r = 0.16 + 0.28 * math.sin(t * math.pi)
+        lx = -2.4 + r * math.cos(ang)
+        lz = 2.45 + r * math.sin(ang)
+        ly = 0.70 + 1.15 * t
+
+        cluster_rad = 0.19 + 0.08 * (1.0 - t * 0.4)
+        c_mesh = trimesh.creation.icosphere(subdivisions=2, radius=cluster_rad)
+        # Scale to give natural flattened leaf canopy profile
+        s_matrix = np.diag([1.35, 0.42, 1.15, 1.0])
+        c_mesh.apply_transform(s_matrix)
+        # Apply tilt
+        rot = trimesh.transformations.rotation_matrix(0.35 * math.sin(ang), [math.cos(ang), 0.0, math.sin(ang)])
+        c_mesh.apply_transform(rot)
+        c_mesh.apply_translation((lx, ly, lz))
+
+        # Varied lush botanical green shades
+        shade = int(24 + 18 * t)
+        c_mesh.visual.vertex_colors = np.full((len(c_mesh.vertices), 4), [shade, 125 + shade // 2, 55, 255], dtype=np.uint8)
+        c_mesh.metadata["name"] = f"Plant Leaves {idx}"
+        scene.add_geometry(c_mesh, node_name=f"plant_leaves_{idx}")
 
     # 14. Designer Brass Arc Lamp
     lamp_base = _make_cylinder(0.24, 0.035, (1.8, 0.0175, 2.0), [215, 175, 95, 255], "Lamp Base")

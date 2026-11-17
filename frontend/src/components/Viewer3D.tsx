@@ -118,6 +118,57 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
   else if (mentionsGreen) sofaColor = 0x1b704c;
   else if (mentionsYellow || prompt.includes("amber") || prompt.includes("ochre")) sofaColor = 0xd97706;
 
+  // Plant styling
+  let plantPotColor = 0xb4533c;
+  let plantPotMetal = 0.05;
+  let plantPotRough = 0.72;
+  let plantLeafColor = 0x15803d;
+  let plantLeafRough = 0.28;
+  let plantLeafMetal = 0.04;
+
+  const targetIsPlant = target.includes("plant") || target.includes("ficus") || target.includes("leaves") || target.includes("pot");
+  if (targetIsPlant || prompt.includes("plant") || prompt.includes("ficus") || versionId?.toLowerCase().includes("ficus")) {
+    if (prompt.includes("italian") || prompt.includes("luxury") || prompt.includes("brass") || prompt.includes("gold") || prompt.includes("milanese")) {
+      plantPotColor = 0xd4af37;
+      plantPotMetal = 0.90;
+      plantPotRough = 0.18;
+      plantLeafColor = 0x064e3b;
+      plantLeafRough = 0.20;
+      plantLeafMetal = 0.08;
+    } else if (prompt.includes("industrial") || prompt.includes("loft") || prompt.includes("dark") || prompt.includes("metal") || prompt.includes("black")) {
+      plantPotColor = 0x18181b;
+      plantPotMetal = 0.65;
+      plantPotRough = 0.50;
+      plantLeafColor = 0x365314;
+      plantLeafRough = 0.35;
+      plantLeafMetal = 0.02;
+    } else if (prompt.includes("nordic") || prompt.includes("minimalist") || prompt.includes("scandinavian") || prompt.includes("oak")) {
+      plantPotColor = 0xe2d4c0;
+      plantPotMetal = 0.02;
+      plantPotRough = 0.82;
+      plantLeafColor = 0x16a34a;
+      plantLeafRough = 0.25;
+      plantLeafMetal = 0.04;
+    } else if (prompt.includes("japandi") || prompt.includes("organic") || prompt.includes("wabi") || prompt.includes("stone") || prompt.includes("basalt")) {
+      plantPotColor = 0x57534e;
+      plantPotMetal = 0.05;
+      plantPotRough = 0.95;
+      plantLeafColor = 0x14532d;
+      plantLeafRough = 0.30;
+      plantLeafMetal = 0.02;
+    }
+
+    if (prompt.includes("red") || prompt.includes("crimson") || prompt.includes("autumn")) {
+      plantLeafColor = 0x991b1b;
+    } else if (prompt.includes("yellow") || prompt.includes("sunflower")) {
+      plantLeafColor = 0xeab308;
+    } else if (prompt.includes("white") || prompt.includes("variegated")) {
+      plantLeafColor = 0x86efac;
+    } else if (prompt.includes("purple") || prompt.includes("violet")) {
+      plantLeafColor = 0x581c87;
+    }
+  }
+
   root.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
       const mesh = child as THREE.Mesh;
@@ -186,18 +237,24 @@ function enhancePhotorealisticScene(root: THREE.Object3D, scene: THREE.Scene, ve
         });
       } else if (name.includes("plant_pot") || name.includes("pot")) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0xb4533c,
-          roughness: 0.72,
+          color: plantPotColor,
+          metalness: plantPotMetal,
+          roughness: plantPotRough,
         });
       } else if (name.includes("leaves") || name.includes("plant_leaves")) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0x15803d,
-          roughness: 0.28,
-          metalness: 0.04,
+          color: plantLeafColor,
+          roughness: plantLeafRough,
+          metalness: plantLeafMetal,
+        });
+      } else if (name.includes("plant_trunk") || name.includes("trunk")) {
+        mesh.material = new THREE.MeshStandardMaterial({
+          color: 0x6e4b32,
+          roughness: 0.88,
         });
       } else if (name.includes("plant_soil") || name.includes("soil")) {
         mesh.material = new THREE.MeshStandardMaterial({
-          color: 0x3d271d,
+          color: 0x37261a,
           roughness: 0.95,
         });
       } else if (name.includes("lamp_base") || name.includes("lamp_stem") || name.includes("lamp_arm")) {
@@ -276,6 +333,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   const onSelectObjectNameRef = useRef(onSelectObjectName);
   onSelectObjectNameRef.current = onSelectObjectName;
   const pathRafRef = useRef<number | null>(null);
+  const persistedCameraStateRef = useRef<{ position: [number, number, number]; target: [number, number, number] } | null>(null);
 
   const manifestRef = useRef(manifest);
   manifestRef.current = manifest;
@@ -357,6 +415,83 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       const scene = sceneRef.current;
       if (!scene) return false;
       const textureLoader = new THREE.TextureLoader();
+
+      // 0. Plant / Ficus Indoor Plant
+      if (
+        targetName.includes("Plant") ||
+        targetName.includes("Ficus") ||
+        targetName.includes("Leaves") ||
+        targetName.includes("Pot")
+      ) {
+        let potColor = 0xb4533c;
+        let potMetal = 0.05;
+        let potRough = 0.72;
+        let leafColor = 0x15803d;
+        let leafRough = 0.28;
+        let leafMetal = 0.04;
+
+        if (p.includes("italian") || p.includes("luxury") || p.includes("brass") || p.includes("gold") || p.includes("milanese")) {
+          potColor = 0xd4af37;
+          potMetal = 0.90;
+          potRough = 0.18;
+          leafColor = 0x064e3b;
+          leafRough = 0.20;
+          leafMetal = 0.08;
+        } else if (p.includes("industrial") || p.includes("loft") || p.includes("dark") || p.includes("metal") || p.includes("black")) {
+          potColor = 0x18181b;
+          potMetal = 0.65;
+          potRough = 0.50;
+          leafColor = 0x365314;
+          leafRough = 0.35;
+          leafMetal = 0.02;
+        } else if (p.includes("nordic") || p.includes("minimalist") || p.includes("scandinavian") || p.includes("oak")) {
+          potColor = 0xe2d4c0;
+          potMetal = 0.02;
+          potRough = 0.82;
+          leafColor = 0x16a34a;
+          leafRough = 0.25;
+          leafMetal = 0.04;
+        } else if (p.includes("japandi") || p.includes("organic") || p.includes("wabi") || p.includes("stone") || p.includes("basalt")) {
+          potColor = 0x57534e;
+          potMetal = 0.05;
+          potRough = 0.95;
+          leafColor = 0x14532d;
+          leafRough = 0.30;
+          leafMetal = 0.02;
+        }
+
+        if (p.includes("red") || p.includes("crimson") || p.includes("autumn")) {
+          leafColor = 0x991b1b;
+        } else if (p.includes("yellow") || p.includes("sunflower")) {
+          leafColor = 0xeab308;
+        } else if (p.includes("white") || p.includes("variegated")) {
+          leafColor = 0x86efac;
+        } else if (p.includes("purple") || p.includes("violet")) {
+          leafColor = 0x581c87;
+        }
+
+        scene.traverse((child) => {
+          const m = child as THREE.Mesh;
+          if (m.isMesh) {
+            const raw = `${m.name} ${m.geometry?.name || ""} ${(m.userData?.name as string | undefined) || ""}`.toLowerCase();
+            if (raw.includes("plant_pot") || raw.includes("pot") || raw.includes("planter")) {
+              if (m.material && "color" in m.material) {
+                (m.material as THREE.MeshStandardMaterial).color.setHex(potColor);
+                (m.material as THREE.MeshStandardMaterial).metalness = potMetal;
+                (m.material as THREE.MeshStandardMaterial).roughness = potRough;
+                (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+              }
+            } else if (raw.includes("leaves") || raw.includes("leaf")) {
+              if (m.material && "color" in m.material) {
+                (m.material as THREE.MeshStandardMaterial).color.setHex(leafColor);
+                (m.material as THREE.MeshStandardMaterial).roughness = leafRough;
+                (m.material as THREE.MeshStandardMaterial).metalness = leafMetal;
+                (m.material as THREE.MeshStandardMaterial).needsUpdate = true;
+              }
+            }
+          }
+        });
+      }
 
       // 1. Painting / Canvas Art
       if (
@@ -553,36 +688,60 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       themeObserver?.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
     }
 
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const shadowRes = isMobile ? 1024 : 2048;
+
     const sunLight = new THREE.DirectionalLight(0xfff7ed, 3.2);
     sunLight.position.set(-4.0, 3.0, 0.0);
     sunLight.target.position.set(0.0, 0.6, 0.5);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(shadowRes, shadowRes);
+    sunLight.shadow.bias = -0.00015;
+    sunLight.shadow.normalBias = 0.025;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 15.0;
+    sunLight.shadow.camera.left = -3.5;
+    sunLight.shadow.camera.right = 3.5;
+    sunLight.shadow.camera.top = 3.5;
+    sunLight.shadow.camera.bottom = -3.5;
     scene.add(sunLight, sunLight.target);
-    const roomFill = new THREE.DirectionalLight(0xe0f2fe, 2.0);
+
+    const roomFill = new THREE.DirectionalLight(0xe0f2fe, 0.85);
     roomFill.position.set(3.0, 3.5, -2.0);
     roomFill.target.position.set(-0.5, 0.6, 0.5);
     scene.add(roomFill, roomFill.target);
-    const ceilingLight = new THREE.PointLight(0xffedd5, 1.8, 12);
+
+    const ceilingLight = new THREE.PointLight(0xffedd5, 1.4, 10);
     ceilingLight.position.set(0.0, 2.3, 0.5);
     scene.add(ceilingLight);
-    scene.add(new THREE.AmbientLight(0xffffff, 2.8));
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x94a3b8, 1.8));
+
+    scene.add(new THREE.AmbientLight(0xfffbeb, 0.45));
+    scene.add(new THREE.HemisphereLight(0xffedd5, 0x292524, 0.40));
 
     const camera = new THREE.PerspectiveCamera(60, 1, 0.02, 500);
-    // YXZ prevents gimbal roll during WASD + mouse-look walk mode.
     camera.rotation.order = "YXZ";
-    camera.position.set(...DEFAULT_EYE);
-    camera.lookAt(...DEFAULT_TARGET);
+    if (persistedCameraStateRef.current) {
+      camera.position.set(...persistedCameraStateRef.current.position);
+      camera.lookAt(...persistedCameraStateRef.current.target);
+    } else {
+      camera.position.set(...DEFAULT_EYE);
+      camera.lookAt(...DEFAULT_TARGET);
+    }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 1.25) : Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.3;
+    renderer.toneMappingExposure = 1.15;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
     const orbit = new OrbitControls(camera, renderer.domElement);
-    orbit.target.set(...DEFAULT_TARGET);
+    if (persistedCameraStateRef.current) {
+      orbit.target.set(...persistedCameraStateRef.current.target);
+    } else {
+      orbit.target.set(...DEFAULT_TARGET);
+    }
     orbit.enableDamping = true;
     orbit.touches = {
       ONE: THREE.TOUCH.ROTATE,
@@ -843,6 +1002,11 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
       camera.position.z = Math.max(-3.5, Math.min(3.5, camera.position.z));
       camera.position.y = Math.max(0.2, Math.min(2.8, camera.position.y));
 
+      persistedCameraStateRef.current = {
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: [orbit.target.x, orbit.target.y, orbit.target.z],
+      };
+
       renderer.render(scene, camera);
       frameCount += 1;
       const now = performance.now();
@@ -881,7 +1045,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
             enhancePhotorealisticScene(result.object, scene, (activeManifest as { version_id?: string })?.version_id, activeManifest);
           } else if (result.object) {
             const box = new THREE.Box3().setFromObject(result.object);
-            if (!box.isEmpty()) {
+            if (!box.isEmpty() && !persistedCameraStateRef.current) {
               const center = box.getCenter(new THREE.Vector3());
               const size = box.getSize(new THREE.Vector3());
               const maxDim = Math.max(size.x, size.y, size.z);
@@ -925,7 +1089,16 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         host.removeChild(renderer.domElement);
       }
     };
-  }, [manifestVersionId, manifestSpz, manifestGlb, manifestPoints, assetBaseUrl]);
+  }, [manifestSpz, manifestGlb, manifestPoints, assetBaseUrl]);
+
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    const scene = sceneRef.current;
+    const root = scene.children.find((c) => (c as THREE.Group).isGroup || ((c as THREE.Mesh).isMesh && c.name !== "object_selection_highlight" && c.name !== "terrace_backdrop"));
+    if (root) {
+      enhancePhotorealisticScene(root, scene, manifestVersionId, manifestRef.current);
+    }
+  }, [manifestVersionId]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -943,44 +1116,105 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
 
     if (!selectedObjectName) return;
 
-    let targetMesh: THREE.Object3D | null = null;
+    const targetMeshes: THREE.Mesh[] = [];
     const search = selectedObjectName.toLowerCase();
     scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh && !targetMesh) {
+      if ((child as THREE.Mesh).isMesh && child.name !== "object_selection_highlight" && child.name !== "terrace_backdrop") {
         const mesh = child as THREE.Mesh;
         const raw = `${mesh.name} ${mesh.geometry?.name || ""} ${(mesh.userData?.name as string | undefined) || ""}`.toLowerCase();
-        if (search.includes("mug") && (raw.includes("mug") || raw.includes("cup"))) targetMesh = child;
-        else if (search.includes("sofa") && (raw.includes("sofa") || raw.includes("cushion"))) targetMesh = child;
-        else if (search.includes("table") && (raw.includes("table") || raw.includes("coffee_table")) && !raw.includes("mug")) targetMesh = child;
-        else if (search.includes("art") && (raw.includes("canvas") || raw.includes("frame") || raw.includes("art"))) targetMesh = child;
-        else if (search.includes("book") && raw.includes("book")) targetMesh = child;
-        else if (search.includes("lamp") && raw.includes("lamp")) targetMesh = child;
-        else if (search.includes("plant") && (raw.includes("plant") || raw.includes("leaves") || raw.includes("pot"))) targetMesh = child;
-        else if (search.includes("pillow") && raw.includes("pillow")) targetMesh = child;
-        else if (search.includes("wall") && raw.includes("wall")) targetMesh = child;
+        let matches = false;
+        if (search.includes("plant") || search.includes("ficus")) {
+          matches = raw.includes("plant") || raw.includes("leaves") || raw.includes("pot") || raw.includes("trunk") || raw.includes("soil");
+        } else if (search.includes("mug")) {
+          matches = raw.includes("mug") || raw.includes("cup");
+        } else if (search.includes("sofa")) {
+          matches = raw.includes("sofa") || raw.includes("cushion") || raw.includes("pillow");
+        } else if (search.includes("table")) {
+          matches = (raw.includes("table") || raw.includes("coffee_table")) && !raw.includes("mug");
+        } else if (search.includes("art")) {
+          matches = raw.includes("canvas") || raw.includes("frame") || raw.includes("art");
+        } else if (search.includes("book")) {
+          matches = raw.includes("book");
+        } else if (search.includes("lamp")) {
+          matches = raw.includes("lamp") || raw.includes("shade") || raw.includes("arm");
+        } else if (search.includes("pillow")) {
+          matches = raw.includes("pillow");
+        } else if (search.includes("wall")) {
+          matches = raw.includes("wall");
+        }
+        if (matches) targetMeshes.push(mesh);
       }
     });
 
-    if (targetMesh) {
-      const box = new THREE.Box3().setFromObject(targetMesh);
-      if (!box.isEmpty()) {
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
+    if (targetMeshes.length > 0) {
+      const unifiedBox = new THREE.Box3();
+      targetMeshes.forEach((m) => unifiedBox.union(new THREE.Box3().setFromObject(m)));
+      if (!unifiedBox.isEmpty()) {
+        const size = unifiedBox.getSize(new THREE.Vector3());
+        const center = unifiedBox.getCenter(new THREE.Vector3());
+        const group = new THREE.Group();
+        group.name = "object_selection_highlight";
+
+        // 1. Translucent glowing volume
         const boxGeo = new THREE.BoxGeometry(
-          Math.max(0.1, size.x * 1.08),
-          Math.max(0.1, size.y * 1.08),
-          Math.max(0.1, size.z * 1.08)
+          Math.max(0.12, size.x * 1.05),
+          Math.max(0.12, size.y * 1.05),
+          Math.max(0.12, size.z * 1.05)
         );
-        const boxMat = new THREE.MeshBasicMaterial({
-          color: 0xf59e0b,
-          wireframe: true,
+        const fillMat = new THREE.MeshBasicMaterial({
+          color: 0x06b6d4,
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.18,
+          depthWrite: false,
+          side: THREE.DoubleSide,
         });
-        const highlightBox = new THREE.Mesh(boxGeo, boxMat);
-        highlightBox.name = "object_selection_highlight";
-        highlightBox.position.copy(center);
-        scene.add(highlightBox);
+        const fillMesh = new THREE.Mesh(boxGeo, fillMat);
+        fillMesh.position.copy(center);
+        group.add(fillMesh);
+
+        // 2. High-contrast neon edge lines (no diagonal cuts)
+        const edgeGeo = new THREE.EdgesGeometry(boxGeo, 20);
+        const edgeMat = new THREE.LineBasicMaterial({
+          color: 0x38bdf8,
+          linewidth: 2,
+        });
+        const edgeLines = new THREE.LineSegments(edgeGeo, edgeMat);
+        edgeLines.position.copy(center);
+        edgeLines.renderOrder = 11;
+        group.add(edgeLines);
+
+        // 3. 3D Floating selection pill badge
+        if (typeof document !== "undefined") {
+          const badgeCanvas = document.createElement("canvas");
+          badgeCanvas.width = 512;
+          badgeCanvas.height = 128;
+          const ctx = badgeCanvas.getContext("2d");
+          if (ctx) {
+            ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+            ctx.beginPath();
+            ctx.roundRect(16, 16, 480, 96, 48);
+            ctx.fill();
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            ctx.fillStyle = "#38bdf8";
+            ctx.font = "bold 32px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(`✦ SELECTED: ${selectedObjectName.toUpperCase()}`, 256, 64);
+
+            const badgeTex = new THREE.CanvasTexture(badgeCanvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: badgeTex, depthTest: false });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(center.x, unifiedBox.max.y + 0.28, center.z);
+            sprite.scale.set(0.9, 0.225, 1);
+            sprite.renderOrder = 12;
+            group.add(sprite);
+          }
+        }
+
+        scene.add(group);
       }
     }
   }, [selectedObjectName]);

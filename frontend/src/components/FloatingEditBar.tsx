@@ -35,6 +35,16 @@ interface StyleSuggestion {
 function getCuratedSuggestions(objectName: string): StyleSuggestion[] {
   const name = objectName.toLowerCase();
 
+  // 0. Botanical & Planter Plants
+  if (name.includes("plant") || name.includes("ficus") || name.includes("tree") || name.includes("leaves")) {
+    return [
+      { icon: "🏛️", label: "Italian Luxury", prompt: "Contemporary Milanese luxury with brass planter and emerald velvet leaves" },
+      { icon: "🖤", label: "Industrial Loft", prompt: "Urban industrial loft style with dark metals and smoky olive foliage" },
+      { icon: "✨", label: "Nordic Minimalist", prompt: "Light Scandinavian minimalist design with natural oak planter" },
+      { icon: "🌿", label: "Japandi Organic", prompt: "Japandi aesthetic with wabi-sabi basalt stone planter and bonsai" },
+    ];
+  }
+
   // 1. Small tabletop & decor items (highest specificity)
   if (name.includes("mug") || name.includes("cup") || name.includes("vase") || name.includes("pot") || name.includes("bowl")) {
     return [
