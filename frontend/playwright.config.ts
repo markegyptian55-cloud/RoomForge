@@ -27,10 +27,13 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: "**/*.spec.ts",
   webServer: {
-    command: `npx next dev -H 127.0.0.1 -p ${port} --dist-dir .next-test`,
+    command: `npx next dev -H 127.0.0.1 -p ${port}`,
     url: baseURL,
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.ROOM3D_BACKEND_URL,
     timeout: 120000,
+    env: {
+      ROOM3D_BACKEND_URL: process.env.ROOM3D_BACKEND_URL ?? "http://127.0.0.1:8000",
+    },
   },
   use: {
     baseURL,

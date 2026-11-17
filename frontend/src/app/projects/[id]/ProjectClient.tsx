@@ -29,14 +29,12 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
   const [floatingStatus, setFloatingStatus] = useState("");
   const [error, setError] = useState("");
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [userEmail, setUserEmail] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
-      const savedEmail = localStorage.getItem("roomforge_user_email");
-      if (savedEmail) setUserEmail(savedEmail);
+      return localStorage.getItem("roomforge_user_email");
     }
-  }, []);
+    return null;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -87,10 +85,11 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   const displayVersionId = selectedVersionId ?? project?.active_version_id ?? null;
+  const fallbackVersionId = project?.versions?.[0]?.id;
+  const isManifestLoaded = Boolean(versionManifest?.versionId === displayVersionId && versionManifest?.data);
 
   useEffect(() => {
-    if (!projectId || !displayVersionId) return;
-    if (versionManifest?.versionId === displayVersionId && versionManifest.data) return;
+    if (!projectId || !displayVersionId || isManifestLoaded) return;
     let cancelled = false;
     void roomApi
       .manifest(projectId, displayVersionId)
@@ -109,9 +108,8 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
               }
             }
           } catch {}
-          const fallback = project?.versions?.[0]?.id;
-          if (fallback && fallback !== displayVersionId) {
-            setSelectedVersionId(fallback);
+          if (fallbackVersionId && fallbackVersionId !== displayVersionId) {
+            setSelectedVersionId(fallbackVersionId);
           } else {
             setVersionManifest(null);
           }
@@ -120,7 +118,7 @@ export default function ProjectClient({ projectId }: { projectId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [projectId, displayVersionId]);
+  }, [projectId, displayVersionId, isManifestLoaded, fallbackVersionId]);
 
   const activeManifest =
     displayVersionId && versionManifest?.versionId === displayVersionId ? versionManifest.data : undefined;

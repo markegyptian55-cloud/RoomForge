@@ -303,6 +303,15 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
 
   modeRef.current = mode;
   initialCollisionRef.current = collision;
+
+  useEffect(() => {
+    if (isEditMode) {
+      setHintMessage("Edit Mode: Tap or click any furniture to restage");
+      const timer = setTimeout(() => setHintMessage(null), 3500);
+      return () => clearTimeout(timer);
+    }
+    setHintMessage(null);
+  }, [isEditMode]);
   transformRef.current = flattenMatrix(manifest?.T_viewer_from_colmap);
   versionCallbackRef.current = onVersionChange;
 
@@ -517,7 +526,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
-    const isMeshRoom = Boolean(manifest?.artifacts?.scene_glb_relpath || manifest?.artifacts?.mesh_glb_relpath);
+    const isMeshRoom = Boolean(manifestGlb);
 
     const isInitialDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
     const scene = new THREE.Scene();
@@ -753,7 +762,7 @@ const Viewer3D = forwardRef<ViewerController, Viewer3DProps>(function Viewer3D(
         rayOriginColmap: origin,
         rayDirColmap: rayDir,
         nearestFrameIdx: worldHit
-          ? findNearestTrainingFrame(worldHit, origin, rayDir, manifest?.frames ?? [])
+          ? findNearestTrainingFrame(worldHit, origin, rayDir, manifestRef.current?.frames ?? [])
           : null,
       };
       handlersRef.current.forEach((handler) => handler(eventData));

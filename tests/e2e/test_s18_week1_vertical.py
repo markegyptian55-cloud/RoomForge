@@ -142,6 +142,12 @@ def _run_worker_week1(worker: WorkerClient, project_id: str, work_dir: Path, exp
 
     for rel in ("manifest.json", "scene.spz", "scene.ply", "sparse_points.json"):
         worker.upload(project_id, version_id, rel, work_dir / "scene" / rel)
+    for frame in extracted.index.get("frames", []):
+        img_rel = frame.get("image_relpath")
+        if img_rel:
+            frame_file = work_dir / "frames" / img_rel
+            if frame_file.exists():
+                worker.upload(project_id, version_id, img_rel, frame_file)
 
     worker.complete(
         claimed,
@@ -231,11 +237,13 @@ def test_week1_live_browser_renders_reconstructed_room(tmp_path: Path) -> None:
         "ROOM3D_LOCAL_STORAGE_DIR": str(tmp_path / "live_storage"),
         "ROOM3D_AUTH_REQUIRED": "false",
     }
+    log_path = tmp_path / "backend.log"
+    log_file = log_path.open("w", encoding="utf-8")
     backend_proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", str(backend_port)],
         cwd=str(REPO_ROOT / "backend"),
         env=backend_env,
-        stdout=subprocess.PIPE,
+        stdout=log_file,
         stderr=subprocess.STDOUT,
         text=True,
     )
@@ -289,3 +297,4 @@ def test_week1_live_browser_renders_reconstructed_room(tmp_path: Path) -> None:
             backend_proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             backend_proc.kill()
+        log_file.close()

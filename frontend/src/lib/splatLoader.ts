@@ -209,7 +209,10 @@ export async function loadSplats(
       const { SparkRenderer, SplatMesh } = await import("@sparkjsdev/spark");
       sparkRenderer = new SparkRenderer({ renderer });
       mesh = new SplatMesh({ url, raycastable: true });
-      await mesh.initialized;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Spark SplatMesh initialization timed out")), 4000)
+      );
+      await Promise.race([mesh.initialized, timeoutPromise]);
       applyViewerTransform(mesh, manifest.T_viewer_from_colmap);
       const splatCount = mesh.splats?.getNumSplats() ?? mesh.packedSplats?.numSplats ?? 0;
       scene.add(sparkRenderer, mesh);

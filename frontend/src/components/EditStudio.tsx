@@ -367,6 +367,7 @@ export default function EditStudio({
               <button
                 type="button"
                 className="button primary"
+                aria-label="Apply & Rebuild 3D Room"
                 disabled={busy}
                 onClick={() => void handleApplyRebuild()}
                 style={{ flex: 1, justifyContent: "center" }}
@@ -375,11 +376,12 @@ export default function EditStudio({
               </button>
               <button
                 type="button"
+                aria-label="Generate Seed Previews (Preview Seeds)"
                 disabled={busy}
                 onClick={() => void handlePreviewSeeds()}
                 style={{ fontSize: "12px", padding: "6px 10px" }}
               >
-                Preview Seeds
+                Generate Seed Previews (Preview Seeds)
               </button>
             </div>
 
@@ -426,6 +428,7 @@ export default function EditStudio({
 
           {/* Advanced Frame & Mask Inspection Collapsible Accordion */}
           <details
+            open
             style={{
               background: "#090d16",
               border: "1px solid #1e293b",

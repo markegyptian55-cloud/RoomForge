@@ -8,9 +8,11 @@ test.describe("Live Week 1 Backend <-> Frontend E2E", () => {
   test("renders real worker-exported room over Next -> FastAPI proxy without mocks", async ({ page }) => {
     const pageErrors: string[] = [];
     const httpFailures: string[] = [];
+    page.on("console", (msg) => console.log("[BROWSER CONSOLE]", msg.type(), msg.text()));
     page.on("pageerror", (error) => pageErrors.push(error.message));
     page.on("response", (response) => {
       if (response.status() >= 400 && !response.url().includes("favicon")) {
+        console.log(`[HTTP FAILURE] ${response.status()} ${response.url()}`);
         httpFailures.push(`${response.status()} ${response.url()}`);
       }
     });
@@ -26,8 +28,12 @@ test.describe("Live Week 1 Backend <-> Frontend E2E", () => {
     await page.getByRole("button", { name: "Walk" }).click();
     await expect(page.getByRole("button", { name: "Walk" })).toHaveClass(/active/);
     await page.getByRole("button", { name: "Orbit" }).click();
-    await page.locator(".viewer3d canvas").click({ position: { x: 180, y: 180 } });
     await page.getByRole("button", { name: "Reset Camera" }).click();
+    await page.locator(".viewer3d canvas").click({ position: { x: 180, y: 180 } });
+    const closeBtn = page.getByRole("button", { name: "Close editor" });
+    if (await closeBtn.isVisible()) {
+      await closeBtn.click();
+    }
 
     expect(httpFailures).toEqual([]);
     expect(pageErrors).toEqual([]);
